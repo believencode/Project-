@@ -125,6 +125,45 @@ Build it from the business type, not from a hard-coded list:
 | services | цены, заказ, сроки, адрес и часы работы |
 | other | цены, адрес и часы работы |
 
+## Conversation memory
+
+The classifier and the reply model see the last 8 text messages of the chat (customer, bot, staff). Short follow-ups are understood in context:
+
+- "Сколько стоят белые кроссовки?" then "а 42 есть?" → `availability` about white sneakers.
+- "а лоферы?" after a price question → price of the loafers.
+
+Memory never adds facts: replies still come only from confirmed sheet facts.
+
+## Follow-up questions
+
+When one short question lets the bot answer from the sheet, it asks instead of handing off:
+
+- Stock notes cover several items and the customer didn't say which → "Какая модель вас интересует: …?"
+- More than 3 prices and no item named → "Что именно вас интересует? …"
+- Booking or order details missing → see below.
+
+A follow-up is on-topic: it resets off_topic_count and doesn't mark the chat "Needs a person".
+
+## Bookings and orders
+
+`booking` and `order` start a short form. The bot asks one question at a time until it has what staff need, then creates a request.
+
+| Kind | Business | Required details | Questions |
+|---|---|---|---|
+| order | any with prices | item | "Что хотите заказать? Есть: …" |
+| order | shop | + size | "Какой размер нужен?" |
+| booking | café | time, people | "На какое время забронировать столик?", "На сколько человек?" |
+| booking | shop | time | "До какого времени отложить?" |
+| booking | others | time | "На какое время вас записать?" |
+
+- Details already in the message, or the item discussed earlier in the chat, are filled in without asking ("Беру, 43 размер" after asking about loafers).
+- The phone number comes from WhatsApp; the bot doesn't ask for it.
+- When the form is complete, the bot sends "Записал заказ: … Сотрудник подтвердит его здесь в чате." and the chat shows "Needs a person · Booking/order" with a request card.
+- Staff tap **Confirm** or **Decline** (in the chat or on the Requests page). The bot sends "Ваш заказ подтверждён: …" / "Бронь подтверждена: … Ждём вас!" or a polite decline. This does not pause the bot.
+- "отмена" / "не надо" cancels the form.
+- An answer that doesn't fit gets one "Не понял. <question>" retry, then a missing-answer handoff. These answers don't count as off-topic.
+- An on-topic question in the middle of a form is answered, and the form continues.
+
 ## Non-text messages
 
 Voice notes, photos, stickers, and files are not classified and get no bot reply. Mark the chat "Needs a person" with the reason "Voice/photo". They do not change off_topic_count. One demo chat contains a voice note.
@@ -181,3 +220,6 @@ A person can:
 - see the handoff at two off-topic messages, with the badge staying until staff open the chat
 - see a staff reply pause only that chat, and "Skip 30 min" bring the bot back
 - see every bot message in Russian
+- ask "а 42 есть?" after a price question and get the stock answer for that item
+- order sneakers, answer "Какой размер нужен?", and confirm the request in one tap
+- book a café table across three messages and see one request with the time and number of people

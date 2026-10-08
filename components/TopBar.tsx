@@ -11,11 +11,13 @@ export function TopBar() {
     ? [
         ["/live", "Live"],
         ["/inbox", "Inbox"],
+        ["/requests", "Requests"],
         ["/review", "Sheet"],
         ["/settings", "Settings"],
       ]
     : [];
   const waiting = business?.chats.filter((c) => c.needs_person).length ?? 0;
+  const pending = business?.chats.flatMap((c) => c.requests ?? []).filter((r) => r.status === "pending").length ?? 0;
 
   return (
     <header className="topbar">
@@ -27,6 +29,7 @@ export function TopBar() {
           <Link key={href} href={href} className={path === href ? "active" : ""}>
             {label}
             {href === "/inbox" && waiting > 0 ? <span className="badge alert" style={{ marginLeft: 6 }}>{waiting}</span> : null}
+            {href === "/requests" && pending > 0 ? <span className="badge check" style={{ marginLeft: 6 }}>{pending}</span> : null}
           </Link>
         ))}
       </nav>

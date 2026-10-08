@@ -5,6 +5,12 @@ import type { Chat, NeedsPerson } from "@/lib/types";
 import { formatLeft, isPaused } from "@/lib/engine";
 import { useNow, useStore } from "@/lib/store";
 
+function summarizeDraft(chat: Chat): string {
+  const s = chat.draft?.slots ?? {};
+  const parts = [s.item, s.size && `size ${s.size}`, s.people && `${s.people} people`, s.day, s.time].filter(Boolean);
+  return parts.length ? parts.join(", ") : "nothing yet";
+}
+
 const time = (at: number) => new Date(at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function ChatBadges({ chat, now }: { chat: Chat; now: number }) {
@@ -14,12 +20,14 @@ export function ChatBadges({ chat, now }: { chat: Chat; now: number }) {
       {isPaused(chat, now) ? <span className="badge info">Staff has this chat · {formatLeft(chat.paused_until! - now)}</span> : null}
       {chat.ai_stopped && !chat.needs_person ? <span className="badge plain">AI stopped</span> : null}
       {chat.off_topic_count > 0 ? <span className="badge plain">off-topic {chat.off_topic_count}/2</span> : null}
+      {chat.requests?.some((r) => r.status === "pending") ? <span className="badge check">Request to confirm</span> : null}
+      {chat.draft ? <span className="badge plain">Collecting {chat.draft.kind}</span> : null}
     </>
   );
 }
 
 export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat; composer?: boolean; seen?: NeedsPerson | null }) {
-  const { sendStaff, resume, skip30 } = useStore();
+  const { sendStaff, resume, skip30, settle } = useStore();
   const now = useNow();
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
@@ -59,10 +67,28 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
         {flag?.details.length ? (
           <div className="small muted" style={{ marginTop: 6 }}>
             {chat.needs_person ? "" : `Was waiting for a person (${flag.reason}). `}
-            {flag.reason === "Off-topic" ? "Last off-topic messages: " : "Customer asked: "}
+            {flag.reason === "Off-topic" ? "Last off-topic messages: " : flag.reason === "Booking/order" ? "Request: " : "Customer asked: "}
             {flag.details.map((d) => `«${d || "—"}»`).join(", ")}
           </div>
         ) : null}
+        {chat.draft ? (
+          <div className="small muted" style={{ marginTop: 6 }}>
+            Bot is collecting a {chat.draft.kind}: {summarizeDraft(chat)}
+            {chat.draft.asked ? ` · waiting for ${chat.draft.asked}` : ""}
+          </div>
+        ) : null}
+        {chat.requests?.filter((r) => r.status === "pending").map((r) => (
+          <div key={r.id} className="request">
+            <div>
+              <strong>{r.kind === "order" ? "Order" : "Booking"}:</strong> {r.summary}
+              <div className="small muted">{chat.customer} · {chat.phone === "test" ? "test number" : chat.phone}</div>
+            </div>
+            <div className="row">
+              <button className="small" onClick={() => settle(chat.id, r.id, false)}>Decline</button>
+              <button className="primary small" onClick={() => settle(chat.id, r.id, true)}>Confirm</button>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="messages">

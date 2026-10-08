@@ -3,10 +3,6 @@ import type { BusinessType, Topic } from "./types";
 /** Fixed bot lines. Every message the bot sends is Russian. */
 export const MISSING_ANSWER_LINE = "Сотрудник уточнит и ответит вам.";
 export const HANDOFF_LINE = "Вам ответит сотрудник.";
-export const BOOKING_LINE =
-  "Напишите удобное время и номер телефона, сотрудник подтвердит запись.";
-export const ORDER_LINE =
-  "Напишите, что хотите заказать, и номер телефона — сотрудник подтвердит заказ.";
 
 export const OFF_TOPIC_TOPICS: Record<BusinessType, string> = {
   shop: "цены, наличие, доставку, адрес и часы работы",

@@ -26,13 +26,17 @@ State lives in the browser (localStorage). **Settings → Reset prototype** star
 4. **6. Staff reply** pauses only the test chat. The next customer message gets no bot reply.
 5. **Inbox**: other chats still get bot replies (use the "message from this customer" box).
    On the test chat, **Skip 30 min** ends the pause and the bot answers again.
+6. Back on **Live**, tap the second row **a–d**: a price question, then «а 42 есть?» (memory), then
+   «Хочу заказать» → «Какой размер нужен?» → «42». A request appears; confirm it under **Requests** and the bot
+   tells the customer.
 
 Pick **Café** in setup for the café fixture (lagman 250 сом). **Skip** sharing to go through the backup questions,
 including the basic-facts screen.
 
 ## Layout
 
-- `lib/rules.ts` — keyword classifier and replies from confirmed sheet facts
+- `lib/rules.ts` — keyword classifier and replies from confirmed sheet facts, with conversation memory
+- `lib/actions.ts` — booking/order details: what to collect, the questions, reading answers
 - `lib/llm.ts` — optional Claude classifier and reply (`/api/reply`)
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)
 - `lib/fixtures.ts` — shoe shop and café sheets, 8 demo chats

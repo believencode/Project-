@@ -1,13 +1,15 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { Business, Chat, Message, ReplyDecision, Sheet } from "./types";
+import type { Business, Chat, Draft, HistoryLine, Message, ReplyDecision, Sheet } from "./types";
 import {
+  historyOf,
   needsClassification,
   openChat,
   receiveClassified,
   receiveUnclassified,
   resumeBot,
+  settleRequest,
   skipThirtyMinutes,
   staffReply,
 } from "./engine";
@@ -27,6 +29,7 @@ interface Store {
   resume: (chatId: string) => void;
   skip30: (chatId: string) => void;
   open: (chatId: string) => void;
+  settle: (chatId: string, requestId: string, ok: boolean) => void;
   resetTestChat: () => void;
   deleteImportedChats: () => void;
 }
@@ -40,18 +43,18 @@ export function demoBusiness(kind: "shop" | "cafe", name?: string): Business {
   return { id: `biz-${now}`, sheet, chats: [...chats, testChat()], imported_history: true, live: false };
 }
 
-async function decide(text: string, sheet: Sheet): Promise<ReplyDecision> {
+async function decide(text: string, sheet: Sheet, history: HistoryLine[], draft: Draft | null): Promise<ReplyDecision> {
   try {
     const res = await fetch("/api/reply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, sheet }),
+      body: JSON.stringify({ text, sheet, history, draft }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as ReplyDecision;
   } catch {
     // Offline or static export: the same rules run in the browser.
-    return decideWithRules(text, sheet);
+    return decideWithRules(text, sheet, history, draft);
   }
 }
 
@@ -103,12 +106,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         mapChat(chatId, (c) => receiveUnclassified(c, text, kind, Date.now()));
         return null;
       }
-      const decision = await decide(text, b.sheet);
-      const type = ref.current?.sheet.type ?? b.sheet.type;
+      const decision = await decide(text, b.sheet, historyOf(chat), chat.draft ?? null);
+      const sheet = ref.current?.sheet ?? b.sheet;
       mapChat(chatId, (c) =>
         // Staff may have replied while the classifier ran.
         needsClassification(c, kind, Date.now())
-          ? receiveClassified(c, text, decision, type, Date.now())
+          ? receiveClassified(c, text, decision, sheet, Date.now())
           : receiveUnclassified(c, text, kind, Date.now()),
       );
       return decision;
@@ -133,6 +136,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     resume: (chatId) => mapChat(chatId, (c) => resumeBot(c, Date.now())),
     skip30: (chatId) => mapChat(chatId, (c) => skipThirtyMinutes(c, Date.now())),
     open: (chatId) => mapChat(chatId, openChat),
+    settle: (chatId, requestId, ok) => mapChat(chatId, (c) => settleRequest(c, requestId, ok, Date.now())),
     resetTestChat: () => mapChat("test", () => testChat()),
     deleteImportedChats: () => {
       const b = ref.current;

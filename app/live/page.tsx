@@ -15,12 +15,18 @@ function script(type: string, firstItem: string | undefined): string[] {
   return ["Здравствуйте", "Сколько стоят белые кроссовки?", "Какой размер есть?", "Напиши сочинение", "Расскажи анекдот"];
 }
 
+/** Memory, follow-up questions and booking/order requests. */
+function script2(type: string): string[] {
+  if (type === "cafe") return ["Сколько стоит лагман?", "Хочу забронировать столик", "завтра в семь вечера", "нас 4"];
+  return ["Сколько стоят белые кроссовки?", "а 42 есть?", "Хочу заказать", "42"];
+}
+
 export default function LivePage() {
   const { business, sendCustomer, sendStaff, resetTestChat } = useStore();
   const now = useNow();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [last, setLast] = useState<{ text: string; decision: ReplyDecision | null } | null>(null);
+  const [last, setLast] = useState<{ text: string; decision: ReplyDecision | null; requestsBefore: number } | null>(null);
 
   if (!business) return <NeedsBusiness />;
   const chat = business.chats.find((c) => c.is_test);
@@ -31,8 +37,9 @@ export default function LivePage() {
   const send = async (t: string) => {
     if (!t.trim() || busy) return;
     setBusy(true);
+    const requestsBefore = chat.requests?.length ?? 0;
     const decision = await sendCustomer(chat.id, t.trim());
-    setLast({ text: t.trim(), decision });
+    setLast({ text: t.trim(), decision, requestsBefore });
     setText("");
     setBusy(false);
   };
@@ -70,6 +77,17 @@ export default function LivePage() {
             ))}
           </div>
 
+          <div>
+            <div className="small muted" style={{ marginBottom: 6 }}>Memory, follow-ups and requests — tap in order:</div>
+            <div className="script row">
+              {script2(business.sheet.type).map((s, i) => (
+                <button key={s} onClick={() => send(s)} disabled={busy}>
+                  {String.fromCharCode(97 + i)}. {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="row" style={{ flexWrap: "nowrap" }}>
             <input type="text" value={text} placeholder="Сообщение клиента…" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(text)} />
             <button className="primary" onClick={() => send(text)} disabled={busy || !text.trim()}>Send</button>
@@ -92,6 +110,10 @@ export default function LivePage() {
                     <span className="badge plain">off_topic_count: {chat.off_topic_count}</span>
                     <span className="badge plain">path: {last.decision.path}</span>
                     {last.decision.missing ? <span className="badge check">missing answer</span> : null}
+                    {last.decision.follow_up ? <span className="badge check">follow-up question</span> : null}
+                    {last.decision.continues_draft ? <span className="badge plain">answered the bot&apos;s question</span> : null}
+                    {chat.draft ? <span className="badge plain">collecting {chat.draft.kind}: needs {chat.draft.asked}</span> : null}
+                    {(chat.requests?.length ?? 0) > last.requestsBefore ? <span className="badge ok">request created → staff confirm</span> : null}
                   </div>
                   <div>
                     <span className="muted small">Reply: </span>

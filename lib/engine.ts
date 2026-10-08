@@ -1,5 +1,6 @@
-import type { BusinessType, Chat, Message, NeedsPerson, ReplyDecision } from "./types";
+import type { ActionRequest, Chat, Draft, HistoryLine, Message, NeedsPerson, ReplyDecision, Sheet } from "./types";
 import { HANDOFF_LINE, MISSING_ANSWER_LINE, offTopicLine } from "./copy";
+import { CANCEL_LINE, confirmedLine, declinedLine, doneLine, missingSlot, question, summarize } from "./actions";
 
 export const PAUSE_MS = 30 * 60_000;
 
@@ -47,18 +48,74 @@ export function receiveUnclassified(chat: Chat, text: string, kind: Message["kin
   return next;
 }
 
+/** The recent conversation the classifier and reply model see (conversation memory). */
+export function historyOf(chat: Chat, n = 8): HistoryLine[] {
+  return chat.messages
+    .filter((m) => m.from !== "system" && (m.kind ?? "text") === "text" && m.text)
+    .slice(-n)
+    .map((m) => ({ from: m.from, text: m.text, label: m.label }));
+}
+
+/**
+ * Move a booking/order forward: ask for the next missing detail, or, once
+ * everything is known, create a request for staff to confirm in one tap.
+ */
+function advanceDraft(next: Chat, draft: Draft, sheet: Sheet, now: number, bot: (t: string) => void) {
+  const slot = missingSlot(draft, sheet);
+  if (slot) {
+    next.draft = { ...draft, asked: slot };
+    bot(question(slot, draft, sheet));
+    return;
+  }
+  const summary = summarize(draft.kind, draft.slots, sheet);
+  const request: ActionRequest = { id: newId("req"), kind: draft.kind, slots: draft.slots, summary, status: "pending", created_at: now };
+  next.draft = null;
+  next.requests = [...(next.requests ?? []), request];
+  next.needs_person = flag(next, "Booking/order", summary);
+  bot(doneLine(draft.kind, summary));
+}
+
 /** Apply the classifier/reply decision for a customer text message on an unpaused chat. */
 export function receiveClassified(
   chat: Chat,
   text: string,
   decision: ReplyDecision,
-  type: BusinessType,
+  sheet: Sheet,
   now: number,
 ): Chat {
   const customer = msg("customer", text, now, { label: decision.label, path: decision.path });
   const messages = [...chat.messages, customer];
   const next: Chat = { ...chat, messages };
   const bot = (t: string) => messages.push(msg("bot", t, now + 1, { path: decision.path }));
+
+  // An answer to the bot's booking/order question.
+  if (decision.continues_draft && chat.draft) {
+    next.off_topic_count = 0;
+    next.ai_stopped = false;
+    if (decision.cancel) {
+      next.draft = null;
+      bot(CANCEL_LINE);
+      return next;
+    }
+    const draft: Draft = { ...chat.draft, slots: { ...chat.draft.slots, ...decision.slots }, misses: 0 };
+    advanceDraft(next, draft, sheet, now, bot);
+    return next;
+  }
+
+  // The answer didn't fit the question: ask again once, then hand off. Not counted as off-topic.
+  if (decision.label === "off_topic" && chat.draft && !chat.ai_stopped) {
+    const misses = chat.draft.misses + 1;
+    if (misses >= 2) {
+      next.draft = null;
+      bot(MISSING_ANSWER_LINE);
+      next.needs_person = flag(chat, "Missing answer", text);
+    } else {
+      next.draft = { ...chat.draft, misses };
+      const slot = missingSlot(chat.draft, sheet);
+      bot(slot ? `Не понял. ${question(slot, chat.draft, sheet)}` : MISSING_ANSWER_LINE);
+    }
+    return next;
+  }
 
   if (decision.label === "off_topic") {
     next.off_topic_count = chat.off_topic_count + 1;
@@ -71,7 +128,7 @@ export function receiveClassified(
       next.ai_stopped = true;
       next.needs_person = { reason: "Off-topic", details: lastOffTopic(messages) };
     } else {
-      bot(offTopicLine(type));
+      bot(offTopicLine(sheet.type));
     }
     return next;
   }
@@ -86,6 +143,19 @@ export function receiveClassified(
   next.off_topic_count = 0;
   next.ai_stopped = false;
 
+  // Start collecting a booking or an order.
+  if (decision.label === "booking" || decision.label === "order") {
+    const draft: Draft = { kind: decision.label, slots: { ...decision.slots }, misses: 0 };
+    advanceDraft(next, draft, sheet, now, bot);
+    return next;
+  }
+
+  // A short clarifying question beats a handoff.
+  if (decision.follow_up) {
+    bot(decision.follow_up);
+    return next;
+  }
+
   if (decision.missing || !decision.reply) {
     bot(MISSING_ANSWER_LINE);
     next.needs_person = flag(chat, "Missing answer", text);
@@ -93,10 +163,22 @@ export function receiveClassified(
   }
 
   bot(decision.reply);
-  if (decision.label === "booking" || decision.label === "order") {
-    next.needs_person = flag(chat, "Booking/order", text);
-  }
   return next;
+}
+
+/** Staff confirm or decline a booking/order in one tap; the bot tells the customer. */
+export function settleRequest(chat: Chat, requestId: string, ok: boolean, now: number): Chat {
+  const req = chat.requests?.find((r) => r.id === requestId);
+  if (!req || req.status !== "pending") return chat;
+  const text = ok ? confirmedLine(req.kind, req.summary) : declinedLine(req.kind, req.summary);
+  const requests = chat.requests!.map((r) => (r.id === requestId ? { ...r, status: ok ? ("confirmed" as const) : ("declined" as const) } : r));
+  const stillPending = requests.some((r) => r.status === "pending");
+  return {
+    ...chat,
+    requests,
+    needs_person: chat.needs_person?.reason === "Booking/order" && !stillPending ? null : chat.needs_person,
+    messages: [...chat.messages, msg("bot", text, now, {}), msg("system", `Staff ${ok ? "confirmed" : "declined"}: ${req.summary}`, now + 1)],
+  };
 }
 
 /** A staff reply, typed in the inbox or mirrored from the WhatsApp Business app (echo). */
