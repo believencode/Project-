@@ -24,7 +24,7 @@ export function llmEnabled(): boolean {
 
 const DEFAULT_MODEL: Record<Provider, string> = {
   anthropic: "claude-opus-5-5",
-  gemini: "gemini-flash-lite-latest",
+  gemini: "gemini-3.1-flash-lite",
 };
 
 export function llmModel(): string {

@@ -15,7 +15,7 @@ By default the bot classifies and replies with keyword rules. To use an AI model
 
 | Provider | Settings | Default model |
 |---|---|---|
-| Gemini Flash Lite | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | `gemini-flash-lite-latest` |
+| Gemini Flash Lite | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | `gemini-3.1-flash-lite` |
 | Claude | `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` | `claude-opus-5-5` |
 
 `LLM_MODEL` overrides the model (for example a pinned Gemini version). The test box shows which path and model
