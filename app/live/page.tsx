@@ -108,7 +108,7 @@ export default function LivePage() {
                   <div className="row">
                     <span className="badge info">label: {last.decision.label}</span>
                     <span className="badge plain">off_topic_count: {chat.off_topic_count}</span>
-                    <span className="badge plain">path: {last.decision.path}</span>
+                    <span className="badge plain">path: {last.decision.path}{last.decision.model ? ` · ${last.decision.model}` : ""}</span>
                     {last.decision.missing ? <span className="badge check">missing answer</span> : null}
                     {last.decision.follow_up ? <span className="badge check">follow-up question</span> : null}
                     {last.decision.continues_draft ? <span className="badge plain">answered the bot&apos;s question</span> : null}

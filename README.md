@@ -11,9 +11,16 @@ npm run dev        # http://localhost:3000
 npm test           # reply-lock and pause rules
 ```
 
-By default the bot classifies and replies with keyword rules. To use Claude instead, copy `.env.example` to
-`.env.local` and set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`. The test box shows which path ran
-(`LLM` or `rules`). If the LLM call fails, the route falls back to rules.
+By default the bot classifies and replies with keyword rules. To use an AI model, copy `.env.example` to `.env.local`:
+
+| Provider | Settings | Default model |
+|---|---|---|
+| Gemini Flash Lite | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | `gemini-flash-lite-latest` |
+| Claude | `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` | `claude-opus-5-5` |
+
+`LLM_MODEL` overrides the model (for example a pinned Gemini version). The test box shows which path and model
+answered. If a call fails, the route falls back to the rules. Counts, pauses, handoffs and booking/order requests
+stay in code whichever model runs.
 
 State lives in the browser (localStorage). **Settings → Reset prototype** starts over.
 
@@ -37,7 +44,7 @@ including the basic-facts screen.
 
 - `lib/rules.ts` — keyword classifier and replies from confirmed sheet facts, with conversation memory
 - `lib/actions.ts` — booking/order details: what to collect, the questions, reading answers
-- `lib/llm.ts` — optional Claude classifier and reply (`/api/reply`)
+- `lib/llm.ts` — optional AI classifier, replies and booking details via Gemini or Claude (`/api/reply`)
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)
 - `lib/fixtures.ts` — shoe shop and café sheets, 8 demo chats
 - `app/` — wizard (`/setup`), review (`/review`), live + test box (`/live`), inbox, settings

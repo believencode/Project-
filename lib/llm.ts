@@ -1,22 +1,39 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import type { Draft, HistoryLine, Label, ReplyDecision, Sheet, Slots } from "./types";
 import { LABELS } from "./types";
 import { replyFromSheet } from "./rules";
 import { contextItem, extractSlots, isCancel } from "./actions";
 
-/** Server only. Classifier, replies and booking/order details through Claude, enabled with LLM_PROVIDER=anthropic. */
+/**
+ * Server only. Classifier, replies and booking/order details through an LLM.
+ * LLM_PROVIDER=gemini (Gemini Flash Lite) or LLM_PROVIDER=anthropic (Claude); LLM_MODEL overrides the model.
+ * Business rules (counts, pauses, handoffs, requests) stay in code whichever model runs.
+ */
+
+type Provider = "anthropic" | "gemini";
+
+function provider(): Provider | null {
+  const p = process.env.LLM_PROVIDER;
+  return p === "anthropic" || p === "gemini" ? p : null;
+}
 
 export function llmEnabled(): boolean {
-  return process.env.LLM_PROVIDER === "anthropic";
+  return provider() !== null;
 }
 
-const MODEL = process.env.LLM_MODEL || "claude-opus-5-5";
+const DEFAULT_MODEL: Record<Provider, string> = {
+  anthropic: "claude-opus-5-5",
+  gemini: "gemini-flash-lite-latest",
+};
 
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  client ??= new Anthropic();
-  return client;
+export function llmModel(): string {
+  const p = provider();
+  return process.env.LLM_MODEL || (p ? DEFAULT_MODEL[p] : "");
 }
+
+let anthropic: Anthropic | null = null;
+let gemini: GoogleGenAI | null = null;
 
 const CLASSIFY_SYSTEM = `You label the newest WhatsApp message a customer sent to a small business in Bishkek.
 Earlier messages are context only: use them to understand short follow-ups like "а 42 есть?" or "а лоферы?".
@@ -67,18 +84,42 @@ function prompt(history: HistoryLine[], text: string, extra = ""): string {
   return `${extra}<earlier_messages>\n${transcript(history)}\n</earlier_messages>\n<newest_message>${text}</newest_message>`;
 }
 
+/** Gemini's JSON schema support is narrower: drop keywords it may reject. */
+function forGemini(schema: Record<string, unknown>): Record<string, unknown> {
+  const { additionalProperties: _drop, properties, ...rest } = schema;
+  return properties ? { ...rest, properties } : rest;
+}
+
 async function jsonCall<T>(system: string, user: string, schema: Record<string, unknown>): Promise<T> {
-  const response = await getClient().beta.messages.create({
-    model: MODEL,
-    max_tokens: 1024,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
-    system,
-    messages: [{ role: "user", content: user }],
-  });
-  if (response.stop_reason === "refusal") throw new Error("refusal");
-  const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+  let text: string;
+  if (provider() === "gemini") {
+    // Reads GEMINI_API_KEY or GOOGLE_API_KEY.
+    gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY });
+    const response = await gemini.models.generateContent({
+      model: llmModel(),
+      contents: user,
+      config: {
+        systemInstruction: system,
+        responseMimeType: "application/json",
+        responseJsonSchema: forGemini(schema),
+        temperature: 0,
+      },
+    });
+    text = response.text ?? "";
+  } else {
+    anthropic ??= new Anthropic();
+    const response = await anthropic.beta.messages.create({
+      model: llmModel(),
+      max_tokens: 1024,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: { type: "json_schema", schema } },
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+    if (response.stop_reason === "refusal") throw new Error("refusal");
+    text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+  }
   return JSON.parse(text) as T;
 }
 
@@ -117,7 +158,7 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     const { slots, cancel } = await extract(text, sheet, history);
     const fresh = Object.entries(slots).some(([k, v]) => draft.slots[k as keyof Slots] !== v);
     if (cancel || isCancel(text) || fresh) {
-      return { label: draft.kind, reply: null, missing: false, path: "LLM", slots, cancel: cancel || isCancel(text), continues_draft: true };
+      return { label: draft.kind, reply: null, missing: false, path: "LLM", model: llmModel(), slots, cancel: cancel || isCancel(text), continues_draft: true };
     }
   }
 
@@ -135,13 +176,13 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     const merged: Slots = { ...rules, ...slots };
     if (!merged.item && (label === "order" || sheet.type === "shop")) merged.item = contextItem(history, sheet);
     if (!merged.item) delete merged.item;
-    return { label, reply: null, missing: false, path: "LLM", slots: merged };
+    return { label, reply: null, missing: false, path: "LLM", model: llmModel(), slots: merged };
   }
 
   // Fixed lines and greetings don't need the reply model.
   if (label === "off_topic" || label === "greeting") {
     const { reply, missing } = replyFromSheet(label, text, sheet, history);
-    return { label, reply, missing, path: "LLM" };
+    return { label, reply, missing, path: "LLM", model: llmModel() };
   }
 
   const out = await jsonCall<{ reply: string; follow_up: string; missing: boolean }>(
@@ -160,6 +201,6 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
   );
   const reply = out.reply.trim();
   const followUp = out.follow_up.trim();
-  if (!reply && followUp && !out.missing) return { label, reply: null, missing: false, follow_up: followUp, path: "LLM" };
-  return { label, reply: out.missing || !reply ? null : reply, missing: out.missing || !reply, path: "LLM" };
+  if (!reply && followUp && !out.missing) return { label, reply: null, missing: false, follow_up: followUp, path: "LLM", model: llmModel() };
+  return { label, reply: out.missing || !reply ? null : reply, missing: out.missing || !reply, path: "LLM", model: llmModel() };
 }

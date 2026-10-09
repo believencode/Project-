@@ -26,7 +26,7 @@ Working name: Kapso Desk. Language of the UI: Russian, with Kyrgyz as a later pa
 - Local mock data is enough for the prototype
 - One demo business preloaded: a Bishkek shoe shop, plus an empty new-business path that can be a café
 - Classification and replies go through one server route (`/api/reply`):
-  - If an LLM API key is set in env, use a real LLM call for both the classifier and the reply. The provider is set by env var.
+  - If an LLM API key is set in env, use a real LLM call for both the classifier and the reply. The provider is set by env var: `LLM_PROVIDER=gemini` (Gemini Flash Lite, the main target) or `LLM_PROVIDER=anthropic` (Claude).
   - If no key is set, fall back to keyword rules. They must cover the scripted test messages, the greeting words, and the café examples.
   - The test box shows which path ran: `LLM` or `rules`.
 

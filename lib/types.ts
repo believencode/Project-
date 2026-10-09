@@ -133,6 +133,8 @@ export interface ReplyDecision {
   /** The label is allowed, but the needed fact is not in the sheet or not confirmed. */
   missing: boolean;
   path: "LLM" | "rules";
+  /** Which model answered, when path is LLM. */
+  model?: string;
   /** A short clarifying question instead of a handoff, e.g. "Какой размер нужен?". */
   follow_up?: string | null;
   /** Booking/order details found in this message. */
