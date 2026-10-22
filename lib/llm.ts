@@ -33,6 +33,9 @@ export function llmModel(): string {
   return process.env.LLM_MODEL || (p ? DEFAULT_MODEL[p] : "");
 }
 
+/** Claude models that accept `fallbacks: "default"` (server-side fallback when a request is refused). */
+const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"]);
+
 let anthropic: Anthropic | null = null;
 let gemini: GoogleGenAI | null = null;
 
@@ -124,11 +127,13 @@ export async function jsonCall<T>(system: string, user: string, schema: Record<s
     text = response.text ?? "";
   } else {
     anthropic ??= new Anthropic();
+    const model = llmModel();
+    // Server-side refusal fallback exists only for the larger models; Haiku has none.
+    const fallback = FALLBACK_MODELS.has(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {};
     const response = await anthropic.beta.messages.create({
-      model: llmModel(),
+      model,
       max_tokens: 1024,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      ...fallback,
       output_config: { effort: "low", format: { type: "json_schema", schema } },
       system,
       messages: [{ role: "user", content: user }],
