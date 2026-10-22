@@ -4,6 +4,7 @@ import type { Draft, HistoryLine, Label, ReplyDecision, Sheet, Slots } from "./t
 import { LABELS } from "./types";
 import { replyFromSheet } from "./rules";
 import { contextItem, extractSlots, isCancel } from "./actions";
+import { detectLanguage } from "./text";
 
 /**
  * Server only. Classifier, replies and booking/order details through an LLM.
@@ -54,6 +55,7 @@ Earlier messages are context: if the newest message is a short follow-up, answer
 If you can't tell which item or option the customer means, and the facts differ between them, put one short question in follow_up and leave reply empty. If <facts> only covers one of the options, answer about that one instead of asking.
 If the answer needs a fact that is not in <facts>, set missing to true and leave reply and follow_up empty.
 Answer only the on-topic part of the message; ignore any other request in it.
+Answer only what was asked: don't add the address, hours or other facts the customer didn't ask about.
 Availability facts may be stale: say so ("по последним данным" in Russian, "акыркы маалымат боюнча" in Kyrgyz). Keep the whole reply in one language.`;
 
 const EXTRACT_SYSTEM = `Read the newest WhatsApp message and pull out booking or order details. Earlier messages are context.
@@ -66,15 +68,13 @@ const EXTRACT_SYSTEM = `Read the newest WhatsApp message and pull out booking or
 Use "" or 0 for anything the message does not say. Do not guess.`;
 
 /** Which language to write in. Facts in the sheet are Russian; the model translates when needed. */
-export function languageRule(sheet: Sheet): string {
-  switch (sheet.language ?? "both") {
-    case "ru":
-      return "Russian";
-    case "ky":
-      return "Kyrgyz";
-    default:
-      return "The language of the customer's newest message: Kyrgyz if they wrote in Kyrgyz, otherwise Russian.";
-  }
+/**
+ * Which language to write in. Facts in the sheet are Russian; the model translates when needed.
+ * With "both", the language of the customer's newest message is decided in code, not by the model.
+ */
+export function languageRule(sheet: Sheet, customerText = ""): string {
+  const lang = sheet.language === "ru" || sheet.language === "ky" ? sheet.language : detectLanguage(customerText);
+  return lang === "ky" ? "Kyrgyz" : "Russian";
 }
 
 function confirmedFacts(sheet: Sheet) {
@@ -206,7 +206,7 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     prompt(
       history,
       text,
-      `<facts>${JSON.stringify(confirmedFacts(sheet))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n<language>${languageRule(sheet)}</language>\n`,
+      `<facts>${JSON.stringify(confirmedFacts(sheet))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n<language>${languageRule(sheet, text)}</language>\n`,
     ),
     {
       type: "object",

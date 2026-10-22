@@ -10,6 +10,7 @@
  */
 import { shoeChats, shoeSheet, testChat } from "../lib/fixtures";
 import { attachSources } from "../lib/sources";
+import { detectLanguage } from "../lib/text";
 import type { Chat, Label, ReplyDecision, Sheet } from "../lib/types";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -159,6 +160,7 @@ function check(step: Step, before: Chat, out: Turn): string[] {
   for (const p of e.notContains ?? []) if (matches(reply, p)) fails.push(`reply contains ${p}`);
   if (e.noNumbers && /\d/.test(reply)) fails.push("reply has a number");
   if (e.kyrgyz && !KYRGYZ.test(reply)) fails.push("reply not in Kyrgyz");
+  if (!e.kyrgyz && detectLanguage(step.say) === "ru" && /[ңөү]/i.test(reply)) fails.push("Kyrgyz reply to a Russian message");
   if (e.needsPerson && out.chat.needs_person?.reason !== e.needsPerson) fails.push(`needs person ${out.chat.needs_person?.reason ?? "none"}, expected ${e.needsPerson}`);
   if (e.requestSummary) {
     const req = out.chat.requests?.at(-1);
@@ -171,10 +173,13 @@ function check(step: Step, before: Chat, out: Turn): string[] {
 const mode = (await (await fetch(`${BASE}/api/mode`)).json()) as { ai: boolean; model: string | null };
 console.log(`Model: ${mode.ai ? mode.model : "none (demo mode — set LLM_PROVIDER)"}\n`);
 
+// ONLY=regex runs a subset, e.g. ONLY="ky|price".
+const only = process.env.ONLY ? new RegExp(process.env.ONLY, "i") : null;
+
 let passed = 0;
 let total = 0;
 const times: number[] = [];
-for (const c of CASES) {
+for (const c of CASES.filter((c) => !only || only.test(c.name))) {
   let chat: Chat = testChat();
   const fails: string[] = [];
   const replies: string[] = [];

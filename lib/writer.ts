@@ -60,7 +60,7 @@ async function writeOne(intent: BotIntent, sheet: Sheet, chat: Chat, customerTex
     WRITER_SYSTEM,
     `<business>${sheet.name}</business>
 <staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>
-<language>${languageRule(sheet)}</language>
+<language>${languageRule(sheet, customerTexts.at(-1) ?? "")}</language>
 <conversation>\n${history}\n</conversation>
 <instruction>${instruction(intent, sheet)}</instruction>${hint ? `\n<fix>Your previous attempt was rejected: ${hint}. Write it again without that problem.</fix>` : ""}`,
     {

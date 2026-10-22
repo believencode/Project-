@@ -36,3 +36,25 @@ export function findItems(message: string, items: string[]): string[] {
     return items.filter((j) => last(j).slice(0, 4) === noun.slice(0, 4)).length === 1;
   });
 }
+
+/** Kyrgyz-only letters, or Kyrgyz words written with Russian letters. */
+const KYRGYZ_LETTERS = /[ңөүҢӨҮ]/;
+/** Words that only exist in Kyrgyz: one is enough. */
+const KYRGYZ_STRONG = new Set([
+  "саламатсызбы", "рахмат", "канча", "турат", "барбы", "кайда", "качан", "кандай", "берчи", "керек", "эмне",
+  "ооба", "кечирип", "чейин", "иштейсиз", "иштейсиздер", "болобу", "сиздер", "сизде",
+]);
+/** Words that look Russian too (бар, салам, ак): two are needed. */
+const KYRGYZ_WEAK = new Set(["бар", "жок", "салам", "мага", "сиз", "менен", "ак", "кара", "жакшы", "алам"]);
+
+/**
+ * The customer's language, decided in code so the model can't guess wrong:
+ * Kyrgyz if the message has Kyrgyz letters, a word only Kyrgyz has, or two
+ * words common in Kyrgyz; otherwise Russian.
+ */
+export function detectLanguage(text: string): "ru" | "ky" {
+  if (KYRGYZ_LETTERS.test(text)) return "ky";
+  const ws = words(text);
+  if (ws.some((w) => KYRGYZ_STRONG.has(w))) return "ky";
+  return ws.filter((w) => KYRGYZ_WEAK.has(w)).length >= 2 ? "ky" : "ru";
+}

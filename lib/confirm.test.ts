@@ -3,6 +3,7 @@ import { cafeChats, cafeSheet, shoeChats, shoeSheet } from "./fixtures";
 import { attachSources } from "./sources";
 import { applyAnswers, buildQuestions, parsePriceLines } from "./clarify";
 import { applyOps, describeOp, validateOps } from "./edits";
+import { detectLanguage } from "./text";
 
 const NOW = 1_800_000_000_000;
 const DAY = 24 * 60 * 60_000;
@@ -135,5 +136,21 @@ describe("change requests", () => {
 
   it("a removal must name something that exists", () => {
     expect(validateOps([{ op: "remove_price", item: "Пицца" }], sheet, "уберите пиццу").dropped).toHaveLength(1);
+  });
+});
+
+describe("reply language", () => {
+  it.each([
+    ["Сколько стоят белые кроссовки?", "ru"],
+    ["Есть 44 размер?", "ru"],
+    ["Ак кроссовкалар канча турат?", "ky"],
+    ["Дарегиңиз кайда?", "ky"],
+    ["Саламатсызбы", "ky"],
+    ["42 размер барбы?", "ky"],
+    ["Салам, есть кроссовки?", "ru"],
+    ["Салам, лоферы канча турат?", "ky"],
+    ["Привет", "ru"],
+  ])("%s → %s", (text, lang) => {
+    expect(detectLanguage(text)).toBe(lang);
   });
 });

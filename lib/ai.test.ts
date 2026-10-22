@@ -12,6 +12,7 @@ vi.mock("./llm", () => ({
     return queue.shift();
   }),
   languageRule: () => "Russian",
+  detectLanguage: () => "ru",
 }));
 
 const { writeNewMessages, WriterError } = await import("./writer");
