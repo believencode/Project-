@@ -30,6 +30,8 @@ interface State {
   chats: Chat[];
   /** Messages newer than this are fetched (ISO); a small overlap is deduplicated by `seen`. */
   since: string;
+  /** When the bridge first started on this number: older messages are never answered. */
+  startedAt?: string;
   seen: string[];
 }
 
@@ -48,7 +50,8 @@ async function loadState(): Promise<State> {
   const numbers = await listPhoneNumbers();
   const number = process.env.KAPSO_PHONE_NUMBER_ID
     ? numbers.find((n) => n.phone_number_id === process.env.KAPSO_PHONE_NUMBER_ID)
-    : numbers.find((n) => n.kind === "sandbox") ?? numbers[0];
+    : // A WhatsApp Business app number (what clients connect) wins over the sandbox.
+      (numbers.find((n) => n.is_coexistence) ?? numbers.find((n) => n.kind !== "sandbox") ?? numbers[0]);
   if (!number) throw new Error("No WhatsApp number in this Kapso project.");
   return {
     phoneNumberId: number.phone_number_id,
@@ -56,6 +59,7 @@ async function loadState(): Promise<State> {
     chats: [],
     // Start from now: don't answer messages sent before the bridge was first started.
     since: new Date().toISOString(),
+    startedAt: new Date().toISOString(),
     seen: [],
   };
 }
@@ -122,8 +126,12 @@ async function poll(s: State) {
     listMessages(s.phoneNumberId, { since, direction: "inbound" }),
     listMessages(s.phoneNumberId, { since, direction: "outbound" }),
   ]);
+  // Imported history (origin "history_sync") is never answered, and messages older than the bridge's
+  // first start are skipped too: a customer from months ago must not get a reply now.
+  const startedAt = Date.parse(s.startedAt ?? s.since);
+  const isLive = (m: KapsoMessage) => m.kapso?.origin !== "history_sync" && Number(m.timestamp) * 1000 >= startedAt - 5_000;
   const fresh = [...inbound, ...outbound.filter((m) => m.kapso?.origin === "business_app")]
-    .filter((m) => !s.seen.includes(m.id))
+    .filter((m) => isLive(m) && !s.seen.includes(m.id))
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
   for (const m of fresh) {
     s.seen.push(m.id);
