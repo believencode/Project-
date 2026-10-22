@@ -40,6 +40,7 @@ has one business and sees only their own data. **Settings → Reset prototype** 
    registers a Kapso webhook to `/api/kapso/webhook`; Kapso then pushes each message, signed, and the app answers
    within 10 seconds and replies in the background. Polling is only for local development.
 
+After deploying, open `/api/health`: it shows whether the database, AI and WhatsApp are set up, without showing any key.
 The tables are created on first use. On Vercel the app refuses to start without `DATABASE_URL`, because serverless
 functions have no lasting disk.
 

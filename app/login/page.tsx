@@ -23,8 +23,9 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const body = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Something went wrong. Try again.");
+      // A crashed server sends no JSON; say so instead of a parsing error.
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}). Open /api/health to see what's missing.`);
       await refresh();
       router.replace("/");
     } catch (err) {
