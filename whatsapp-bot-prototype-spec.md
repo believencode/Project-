@@ -136,6 +136,22 @@ The product promise is "AI answers every message", not templates. So:
 - **AI builds the sheet.** "Reading chats" sends the imported chats to the AI, which drafts the knowledge sheet. Only facts whose numbers appear in the chats are kept, tone examples must be real staff replies, and every price and stock note starts as "check this".
 - **Demo mode.** Without an AI key the prototype uses keyword rules and fixed lines, and labels each such message "fixed line" so it is never mistaken for AI.
 
+## Confirming what the AI found
+
+After the AI reads the chats, the owner confirms the facts before anything goes live.
+
+1. **Every fact has a source.** Code (not the AI) finds the chat message that backs each fact: customer name, date and the message word for word, e.g. "Chat with Айгерим · 20.10 · «4500 сом.»". It also finds other prices staff quoted for the same item at other times.
+2. **Questions, one per screen,** for anything unclear, with Back and "Question 2 of 5":
+   - Prices that disagree: "Which price is current for «Чёрные лоферы»?" with each price, its date and message; newest marked. Or another price, or don't quote one.
+   - Each unconfirmed price: Yes / Change price / Don't quote it.
+   - Each stock note: Still true / Change / Remove.
+   - Hours and address found in chats: Correct / Change. Not found: type it, or skip (a person answers those questions).
+   - No prices found: type "Лагман 250" lines, or skip.
+   The skip path (no chats) gets the questions for whatever the owner left empty.
+3. **Summary in plain language:** what was read, "Found: 2 prices, your hours, your address and 1 stock note", each fact with its source, what customers ask about, how the bot will sound, the reply language, and what's not set.
+4. **Changes in the owner's own words.** "Лагман теперь 280, закрываемся в 23:00" → the AI proposes changes, shown as a list ("Лагман: 250 → 280 сом", "Hours: 09:00–22:00 → 09:00–23:00"). Code drops any change whose number the owner didn't write; the AI asks back about anything unclear. The owner applies or cancels. "Edit details by hand" opens the full form.
+5. **Approve and go live.** The same summary and change box are on the Sheet page afterwards.
+
 ## Conversation memory
 
 The classifier and the reply model see the last 8 text messages of the chat (customer, bot, staff). Short follow-ups are understood in context:

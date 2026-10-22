@@ -16,6 +16,8 @@ vi.mock("./llm", () => ({
 
 const { writeNewMessages, WriterError } = await import("./writer");
 const { buildSheetWithAI } = await import("./sheetBuilder");
+const { opsFromRequest } = await import("./editRequest");
+const { validateOps } = await import("./edits");
 
 const NOW = 1_000_000_000;
 const confirmed = (s: Sheet): Sheet => ({
@@ -138,5 +140,29 @@ describe("AI sheet builder", () => {
     expect(sheet.prices.every((p) => p.needs_check)).toBe(true);
     expect(sheet.availability.map((n) => n.text)).toEqual(["Белые кроссовки: размеры 40–43"]);
     expect(sheet.tone_examples).toEqual(["Доставка по Бишкеку 200 сом, привезём завтра."]);
+  });
+});
+
+describe("change request via AI", () => {
+  it("turns the model's answer into checked operations", async () => {
+    const { cafeSheet } = await import("./fixtures");
+    const sheet = cafeSheet();
+    const request = "лагман теперь 280, закрываемся в 23:00, и манты добавьте";
+    queue.push({
+      ops: [
+        { op: "set_price", item: "Лагман", amount: 280, text: "" },
+        { op: "set_hours", item: "", amount: 0, text: "09:00–23:00" },
+        { op: "set_price", item: "Манты", amount: 300, text: "" },
+      ],
+      unclear: "Сколько стоят манты?",
+    });
+    const { ops, unclear } = await opsFromRequest(sheet, request);
+    const checked = validateOps(ops, sheet, request);
+    expect(checked.ok).toEqual([
+      { op: "set_price", item: "Лагман", amount: 280 },
+      { op: "set_hours", text: "09:00–23:00" },
+    ]);
+    expect(checked.dropped).toEqual(["price for «Манты»"]);
+    expect(unclear).toBe("Сколько стоят манты?");
   });
 });

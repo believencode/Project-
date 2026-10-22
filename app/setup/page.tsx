@@ -7,8 +7,12 @@ import { demoBusiness, useStore } from "@/lib/store";
 import { testChat } from "@/lib/fixtures";
 import { ALLOWED_TOPICS, AVAILABILITY_EXAMPLE, BUSINESS_TYPES, EMPTY_STATE_EXAMPLE } from "@/lib/copy";
 import { ReviewSheet } from "@/components/ReviewSheet";
+import { Clarify } from "@/components/Clarify";
+import { SheetSummary } from "@/components/SheetSummary";
+import { attachSources } from "@/lib/sources";
+import { applyAnswers, buildQuestions, type Answer, type Question } from "@/lib/clarify";
 
-type Step = "name" | "type" | "connect" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "review";
+type Step = "name" | "type" | "connect" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
 
 const ASK_OPTIONS: { id: Topic; label: string }[] = [
   { id: "price", label: "Prices" },
@@ -76,7 +80,7 @@ function FakeQR() {
 
 export default function SetupPage() {
   const router = useRouter();
-  const { setBusiness, goLive } = useStore();
+  const { business, setBusiness, goLive, updateSheet } = useStore();
   const [history, setHistory] = useState<Step[]>(["name"]);
   const step = history[history.length - 1];
   const [name, setName] = useState("");
@@ -119,26 +123,45 @@ export default function SetupPage() {
         // No server at all (static demo): keep the demo facts.
       }
       if (cancelled) return;
-      setBusiness(business);
-      setHistory((h) => [...h.slice(0, -1), "review"]);
+      // Link every fact to the chat message it came from, and spot prices that changed over time.
+      startClarify({ ...business, sheet: attachSources(business.sheet, business.chats) }, true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [step, type, name, setBusiness, readTry]);
+    // startClarify only changes state; re-running on its identity would re-read the chats.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, type, name, readTry]);
+
+  // Questions for whatever isn't clear, one per screen, then the summary.
+  const [clarifyBase, setClarifyBase] = useState<Sheet | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  function startClarify(b: Business, replaceCurrent = false) {
+    setBusiness(b);
+    const qs = buildQuestions(b.sheet);
+    setClarifyBase(b.sheet);
+    setQuestions(qs);
+    setAnswers({});
+    const next: Step = qs.length > 0 ? "clarify" : "summary";
+    setHistory((h) => (replaceCurrent ? [...h.slice(0, -1), next] : [...h, next]));
+  }
 
   const buildFromBackup = () => {
     const t = type ?? "other";
+    const owner = { by: "owner" as const, at: Date.now() };
     const sheet: Sheet = {
       name: name.trim() || "Мой бизнес",
       type: t,
       language: language ?? "both",
       hours: facts.hours.trim(),
       address: facts.address.trim(),
+      hours_source: facts.hours.trim() ? owner : undefined,
+      address_source: facts.address.trim() ? owner : undefined,
       prices: facts.prices
         .filter((p) => p.item.trim() && p.amount.trim())
-        .map((p, i) => ({ id: `p${i}`, item: p.item.trim(), amount: Number(p.amount), currency: "сом", needs_check: false })),
-      availability: facts.availability.trim() ? [{ id: "a0", text: facts.availability.trim(), needs_check: false }] : [],
+        .map((p, i) => ({ id: `p${i}`, item: p.item.trim(), amount: Number(p.amount), currency: "сом", needs_check: false, source: owner })),
+      availability: facts.availability.trim() ? [{ id: "a0", text: facts.availability.trim(), needs_check: false, source: owner }] : [],
       top_questions: asks.map((a) => TOPIC_RU[a]),
       tone_examples: [],
       allowed_topics: ALLOWED_TOPICS,
@@ -151,15 +174,53 @@ export default function SetupPage() {
       live: false,
       backup: { asks, goal: goal ?? "answer", language: language ?? "ru", notes },
     };
-    setBusiness(b);
-    go("review");
+    startClarify(b);
   };
 
-  const order: Step[] = ["name", "type", "connect", "share", "asks", "goal", "facts", "language", "notes", "review"];
-  const pct = Math.round(((order.indexOf(step === "reading" ? "review" : step) + 1) / order.length) * 100);
+  const order: Step[] = ["name", "type", "connect", "share", "asks", "goal", "facts", "language", "notes", "clarify", "summary"];
+  const pct = Math.round(((order.indexOf(step === "reading" ? "clarify" : step === "review" ? "summary" : step) + 1) / order.length) * 100);
   const factsEmpty = !facts.hours.trim() && !facts.address.trim() && !facts.availability.trim() && facts.prices.every((p) => !p.item.trim());
 
   const Back = () => (history.length > 1 && step !== "reading" ? <button className="ghost" onClick={back}>← Back</button> : <span />);
+
+  if (step === "clarify" && clarifyBase) {
+    return (
+      <main className="page narrow">
+        <div className="steps">A few questions to get the facts right</div>
+        <Clarify
+          sheet={clarifyBase}
+          questions={questions}
+          answers={answers}
+          onAnswer={(id, a) => setAnswers((all) => ({ ...all, [id]: a }))}
+          onDone={(all) => {
+            setAnswers(all);
+            updateSheet(() => applyAnswers(clarifyBase, questions, all, Date.now()));
+            go("summary");
+          }}
+          onExit={back}
+          fromChats={business?.imported_history ?? false}
+        />
+      </main>
+    );
+  }
+
+  if (step === "summary") {
+    return (
+      <main className="page">
+        <div className="row between">
+          <Back />
+        </div>
+        <SheetSummary
+          mode="wizard"
+          onApprove={() => {
+            goLive();
+            router.push("/live");
+          }}
+          onEditDetails={() => go("review")}
+        />
+      </main>
+    );
+  }
 
   if (step === "review") {
     return (

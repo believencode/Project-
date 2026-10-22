@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { demoBusiness, useStore } from "@/lib/store";
+import { attachSources } from "@/lib/sources";
 
 export default function Home() {
   const { ready, business, setBusiness } = useStore();
@@ -35,7 +36,8 @@ export default function Home() {
           </button>
           <button
             onClick={() => {
-              setBusiness({ ...demoBusiness("shop"), live: true });
+              const demo = demoBusiness("shop");
+              setBusiness({ ...demo, sheet: attachSources(demo.sheet, demo.chats), live: true });
               router.push("/review");
             }}
           >

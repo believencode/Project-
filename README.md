@@ -30,7 +30,9 @@ State lives in the browser (localStorage). **Settings → Reset prototype** star
 ## Demo script
 
 1. **Set up a business** → name → **Shop** → **I scanned it** → **Share 6 months**.
-2. Review: prices and availability show **check this**. **Approve and go live** → **Confirm all and go live**.
+2. Answer the questions one by one: confirm a price (with the chat message it came from), pick the current price of
+   the loafers (5200 newest vs 5000 older), confirm stock, hours and address. Check the summary, then
+   **Approve and go live**. With an AI key, try «Something wrong or missing?» to change facts in your own words.
 3. On **Live**, tap the scripted messages 1–5: greeting (count stays 0), price, size → `availability`,
    two off-topic messages → handoff, AI stops, chat shows **Needs a person**.
 4. **6. Staff reply** pauses only the test chat. The next customer message gets no bot reply.
@@ -50,6 +52,9 @@ including the basic-facts screen.
 - `lib/llm.ts` — AI classifier, replies and booking details via Gemini or Claude
 - `lib/writer.ts` — the AI writes every bot message from its intent; `lib/guard.ts` checks each one before sending
 - `lib/sheetBuilder.ts` — the AI drafts the knowledge sheet from imported chats
+- `lib/sources.ts` — links every fact to the chat message behind it and finds older prices
+- `lib/clarify.ts` — the one-by-one questions and how answers change the sheet
+- `lib/edits.ts`, `lib/editRequest.ts` — change requests in the owner's words: AI proposes, code checks
 - `app/api/turn`, `app/api/settle`, `app/api/build-sheet` — server routes for a customer message, a staff confirm/decline, and setup
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)
 - `lib/fixtures.ts` — shoe shop and café sheets, 8 demo chats

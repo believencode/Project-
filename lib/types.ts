@@ -14,18 +14,34 @@ export type Label = (typeof LABELS)[number];
 
 export type Topic = "price" | "hours" | "booking" | "order" | "address" | "availability";
 
+/** Where a fact came from: a message in an imported chat, or the owner. */
+export interface FactSource {
+  by: "chat" | "owner";
+  /** Customer name of the chat the message is in. */
+  customer?: string;
+  at: number;
+  /** The message, word for word. */
+  quote?: string;
+  /** The owner said this fact (found in a chat) is right. */
+  confirmed?: boolean;
+}
+
 export interface PriceItem {
   id: string;
   item: string;
   amount: number;
   currency: string;
   needs_check: boolean;
+  source?: FactSource;
+  /** Other prices staff quoted for the same item at other times: the owner picks one. */
+  alternatives?: { amount: number; source: FactSource }[];
 }
 
 export interface AvailabilityNote {
   id: string;
   text: string;
   needs_check: boolean;
+  source?: FactSource;
 }
 
 /** Reply language: always Russian, always Kyrgyz, or match the customer. */
@@ -37,6 +53,8 @@ export interface Sheet {
   language?: ReplyLanguage;
   hours: string;
   address: string;
+  hours_source?: FactSource;
+  address_source?: FactSource;
   prices: PriceItem[];
   availability: AvailabilityNote[];
   top_questions: string[];
