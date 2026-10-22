@@ -16,7 +16,7 @@ By default the bot classifies and replies with keyword rules. To use an AI model
 | Provider | Settings | Default model |
 |---|---|---|
 | Gemini Flash Lite | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | `gemini-3.1-flash-lite` |
-| Claude | `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` | `claude-opus-5-5` |
+| Claude | `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` (or `APP_ANTHROPIC_API_KEY`) | `claude-opus-5-5`; the tested choice is `claude-haiku-5-5` |
 
 `LLM_MODEL` overrides the model (for example a pinned Gemini version).
 
@@ -29,9 +29,23 @@ Everything is saved in Postgres. Without `DATABASE_URL` the app uses PGlite, Pos
 process and stored in `./data/pg`, so there is nothing to install. Owners sign up with email and password; each owner
 has one business and sees only their own data. **Settings → Reset prototype** deletes the business.
 
+## Keys
+
+Never paste API keys into a chat, an issue, or the code. In a Claude Code cloud environment:
+
+- **Kapso** and **Gemini**: add them as **network secrets** (environment settings → Network secrets), with no prefix:
+  host `api.kapso.ai`, header `X-API-Key`; host `generativelanguage.googleapis.com`, header `x-goog-api-key`.
+  The network adds the key to each request, so the code never sees it. Set `KAPSO_ENABLED=1`.
+- **Claude**: network secrets are never applied to `api.anthropic.com`, so add `APP_ANTHROPIC_API_KEY` as an
+  environment variable (a separate name from Claude Code's own key).
+- Settings: `LLM_PROVIDER=anthropic`, `LLM_MODEL=claude-haiku-5-5`.
+
+Environment variables load when a session starts or wakes up after being idle; network secrets apply immediately.
+Locally, put the same values in `.env.local` (git-ignored).
+
 ## Real WhatsApp through Kapso
 
-Set `KAPSO_API_KEY` (a key for a separate Kapso project), start the app, then **Settings → WhatsApp → Connect** a
+Set up the Kapso key (a key for a separate Kapso project, see Keys above), start the app, then **Settings → WhatsApp → Connect** a
 number: the sandbox for testing, or a WhatsApp Business app number. The server checks connected numbers for new
 messages every 3 seconds (`lib/whatsapp/poller.ts`), answers through the same bot logic as the web app
 (`lib/turn.ts`) once the business is live, and saves everything to the database. WhatsApp chats show in the inbox with
