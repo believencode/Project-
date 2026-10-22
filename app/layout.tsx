@@ -11,7 +11,7 @@ export const viewport = { width: "device-width", initialScale: 1 };
 
 export const metadata: Metadata = {
   title: "Kapso Desk",
-  description: "WhatsApp Business bot prototype",
+  description: "WhatsApp Business AI assistant",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
