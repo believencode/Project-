@@ -12,7 +12,7 @@ import {
 import { receiveUnclassified, staffReply } from "../engine";
 import { runTurn } from "../turn";
 import { withLock } from "../locks";
-import { KapsoError, listMessages, type KapsoMessage } from "../kapso";
+import { KapsoError, kapsoEnabled, listMessages, type KapsoMessage } from "../kapso";
 import { deliverNew } from "./outbound";
 
 /**
@@ -120,7 +120,7 @@ async function pollAll() {
 const g = globalThis as unknown as { __waPoller?: boolean };
 
 export function startWhatsAppPoller() {
-  if (g.__waPoller || !process.env.KAPSO_API_KEY || process.env.KAPSO_POLL === "0") return;
+  if (g.__waPoller || !kapsoEnabled() || process.env.KAPSO_POLL === "0") return;
   g.__waPoller = true;
   console.log("WhatsApp: checking Kapso for new messages every 3s");
   const tick = async () => {

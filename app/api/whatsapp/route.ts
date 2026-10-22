@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentBusiness } from "@/lib/session";
 import { connectWhatsApp } from "@/lib/repo";
-import { KapsoError, listPhoneNumbers } from "@/lib/kapso";
+import { KapsoError, kapsoEnabled, listPhoneNumbers } from "@/lib/kapso";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const ctx = await currentBusiness();
   if (ctx instanceof NextResponse) return ctx;
-  if (!process.env.KAPSO_API_KEY) return NextResponse.json({ available: false, connected: null, numbers: [] });
+  if (!kapsoEnabled()) return NextResponse.json({ available: false, connected: null, numbers: [] });
   try {
     const numbers = await listPhoneNumbers();
     return NextResponse.json({

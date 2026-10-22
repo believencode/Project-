@@ -40,17 +40,24 @@ export class KapsoError extends Error {
   }
 }
 
-function apiKey(): string {
-  const key = process.env.KAPSO_API_KEY;
-  if (!key) throw new KapsoError("KAPSO_API_KEY is not set", 0);
-  return key;
+/**
+ * WhatsApp is on when KAPSO_API_KEY is set, or KAPSO_ENABLED=1 when the key is a
+ * network secret that the cloud environment adds to requests for api.kapso.ai.
+ */
+export function kapsoEnabled(): boolean {
+  return Boolean(process.env.KAPSO_API_KEY) || process.env.KAPSO_ENABLED === "1";
+}
+
+function authHeaders(): Record<string, string> {
+  if (!kapsoEnabled()) throw new KapsoError("Kapso isn't set up (KAPSO_API_KEY or KAPSO_ENABLED=1)", 0);
+  return process.env.KAPSO_API_KEY ? { "X-API-Key": process.env.KAPSO_API_KEY } : {};
 }
 
 async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
   const request = () =>
     fetch(url, {
       ...init,
-      headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(init.headers ?? {}) },
+      headers: { ...authHeaders(), "Content-Type": "application/json", ...(init.headers ?? {}) },
     });
   let res: Response;
   try {

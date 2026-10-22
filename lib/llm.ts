@@ -111,7 +111,8 @@ export async function jsonCall<T>(system: string, user: string, schema: Record<s
     // Reads GEMINI_API_KEY or GOOGLE_API_KEY.
     // Retry overload (503) and rate limits (429) a few times with short waits: a customer is waiting.
     gemini ??= new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+      // Without a key here, the cloud environment's network secret adds it to each request.
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "added-by-network-secret",
       httpOptions: { retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 } },
     });
     const response = await gemini.models.generateContent({
@@ -126,7 +127,8 @@ export async function jsonCall<T>(system: string, user: string, schema: Record<s
     });
     text = response.text ?? "";
   } else {
-    anthropic ??= new Anthropic();
+    // APP_ANTHROPIC_API_KEY keeps the app's key apart from Claude Code's own in cloud sessions.
+    anthropic ??= new Anthropic({ apiKey: process.env.APP_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY });
     const model = llmModel();
     // Server-side refusal fallback exists only for the larger models; Haiku has none.
     const fallback = FALLBACK_MODELS.has(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {};
