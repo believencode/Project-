@@ -101,6 +101,9 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
               {m.kind === "voice" ? <span>🎤 Voice message 0:14</span> : m.kind === "photo" ? <span>📷 Photo</span> : m.text}
               <div className="meta">
                 <span>{m.from === "bot" ? "Bot" : m.from === "staff" ? "Staff" : ""}</span>
+                {m.from === "bot" && m.written_by ? (
+                  <span className={m.written_by === "ai" ? "badge ok" : "badge plain"}>{m.written_by === "ai" ? "AI" : "fixed line"}</span>
+                ) : null}
                 {m.label ? <span className="badge plain">{m.label}</span> : null}
                 <span>{time(m.at)}</span>
               </div>

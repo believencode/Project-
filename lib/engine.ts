@@ -1,6 +1,6 @@
-import type { ActionRequest, Chat, Draft, HistoryLine, Message, NeedsPerson, ReplyDecision, Sheet } from "./types";
+import type { ActionRequest, BotIntent, Chat, Draft, HistoryLine, Message, NeedsPerson, ReplyDecision, Sheet } from "./types";
 import { HANDOFF_LINE, MISSING_ANSWER_LINE, offTopicLine } from "./copy";
-import { CANCEL_LINE, confirmedLine, declinedLine, doneLine, missingSlot, question, summarize } from "./actions";
+import { CANCEL_LINE, confirmedLine, declinedLine, doneLine, missingSlot, question, slotOptions, summarize } from "./actions";
 
 export const PAUSE_MS = 30 * 60_000;
 
@@ -60,11 +60,11 @@ export function historyOf(chat: Chat, n = 8): HistoryLine[] {
  * Move a booking/order forward: ask for the next missing detail, or, once
  * everything is known, create a request for staff to confirm in one tap.
  */
-function advanceDraft(next: Chat, draft: Draft, sheet: Sheet, now: number, bot: (t: string) => void) {
+function advanceDraft(next: Chat, draft: Draft, sheet: Sheet, now: number, bot: (t: string, intent: BotIntent) => void) {
   const slot = missingSlot(draft, sheet);
   if (slot) {
     next.draft = { ...draft, asked: slot };
-    bot(question(slot, draft, sheet));
+    bot(question(slot, draft, sheet), { type: "ask_slot", slot, kind: draft.kind, options: slotOptions(slot, sheet) });
     return;
   }
   const summary = summarize(draft.kind, draft.slots, sheet);
@@ -72,7 +72,7 @@ function advanceDraft(next: Chat, draft: Draft, sheet: Sheet, now: number, bot: 
   next.draft = null;
   next.requests = [...(next.requests ?? []), request];
   next.needs_person = flag(next, "Booking/order", summary);
-  bot(doneLine(draft.kind, summary));
+  bot(doneLine(draft.kind, summary), { type: "draft_done", kind: draft.kind, summary });
 }
 
 /** Apply the classifier/reply decision for a customer text message on an unpaused chat. */
@@ -86,7 +86,15 @@ export function receiveClassified(
   const customer = msg("customer", text, now, { label: decision.label, path: decision.path });
   const messages = [...chat.messages, customer];
   const next: Chat = { ...chat, messages };
-  const bot = (t: string) => messages.push(msg("bot", t, now + 1, { path: decision.path }));
+  // The intent says what to say. Fixed lines are placeholders the AI writer replaces (demo mode keeps them).
+  const bot = (t: string, intent: BotIntent) =>
+    messages.push(
+      msg("bot", t, now + 1, {
+        path: decision.path,
+        intent,
+        written_by: decision.path === "LLM" && (intent.type === "answer" || intent.type === "follow_up") ? "ai" : "template",
+      }),
+    );
 
   // An answer to the bot's booking/order question.
   if (decision.continues_draft && chat.draft) {
@@ -94,7 +102,7 @@ export function receiveClassified(
     next.ai_stopped = false;
     if (decision.cancel) {
       next.draft = null;
-      bot(CANCEL_LINE);
+      bot(CANCEL_LINE, { type: "cancelled" });
       return next;
     }
     const draft: Draft = { ...chat.draft, slots: { ...chat.draft.slots, ...decision.slots }, misses: 0 };
@@ -107,12 +115,18 @@ export function receiveClassified(
     const misses = chat.draft.misses + 1;
     if (misses >= 2) {
       next.draft = null;
-      bot(MISSING_ANSWER_LINE);
+      bot(MISSING_ANSWER_LINE, { type: "missing" });
       next.needs_person = flag(chat, "Missing answer", text);
     } else {
       next.draft = { ...chat.draft, misses };
       const slot = missingSlot(chat.draft, sheet);
-      bot(slot ? `Не понял. ${question(slot, chat.draft, sheet)}` : MISSING_ANSWER_LINE);
+      if (slot) {
+        bot(`Не понял. ${question(slot, chat.draft, sheet)}`, {
+          type: "ask_slot", slot, kind: chat.draft.kind, options: slotOptions(slot, sheet), retry: true,
+        });
+      } else {
+        bot(MISSING_ANSWER_LINE, { type: "missing" });
+      }
     }
     return next;
   }
@@ -123,19 +137,19 @@ export function receiveClassified(
       // AI already stopped: no reply, keep the badge current.
       next.needs_person = { reason: "Off-topic", details: lastOffTopic(messages) };
     } else if (next.off_topic_count >= 2) {
-      bot(HANDOFF_LINE);
+      bot(HANDOFF_LINE, { type: "handoff" });
       messages.push(msg("system", "Handed to a person: off-topic twice. AI stopped on this chat.", now + 2));
       next.ai_stopped = true;
       next.needs_person = { reason: "Off-topic", details: lastOffTopic(messages) };
     } else {
-      bot(offTopicLine(sheet.type));
+      bot(offTopicLine(sheet.type), { type: "off_topic" });
     }
     return next;
   }
 
   if (decision.label === "greeting") {
     // Greetings never change the count, and get no reply while AI is stopped.
-    if (!chat.ai_stopped && decision.reply) bot(decision.reply);
+    if (!chat.ai_stopped && decision.reply) bot(decision.reply, { type: "greeting" });
     return next;
   }
 
@@ -152,17 +166,17 @@ export function receiveClassified(
 
   // A short clarifying question beats a handoff.
   if (decision.follow_up) {
-    bot(decision.follow_up);
+    bot(decision.follow_up, { type: "follow_up" });
     return next;
   }
 
   if (decision.missing || !decision.reply) {
-    bot(MISSING_ANSWER_LINE);
+    bot(MISSING_ANSWER_LINE, { type: "missing" });
     next.needs_person = flag(chat, "Missing answer", text);
     return next;
   }
 
-  bot(decision.reply);
+  bot(decision.reply, { type: "answer" });
   return next;
 }
 
@@ -177,7 +191,14 @@ export function settleRequest(chat: Chat, requestId: string, ok: boolean, now: n
     ...chat,
     requests,
     needs_person: chat.needs_person?.reason === "Booking/order" && !stillPending ? null : chat.needs_person,
-    messages: [...chat.messages, msg("bot", text, now, {}), msg("system", `Staff ${ok ? "confirmed" : "declined"}: ${req.summary}`, now + 1)],
+    messages: [
+      ...chat.messages,
+      msg("bot", text, now, {
+        intent: { type: ok ? "confirmed" : "declined", kind: req.kind, summary: req.summary },
+        written_by: "template",
+      }),
+      msg("system", `Staff ${ok ? "confirmed" : "declined"}: ${req.summary}`, now + 1),
+    ],
   };
 }
 
@@ -226,4 +247,11 @@ export function formatLeft(ms: number): string {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** A customer message that arrived while the AI could not be reached: no canned reply, a person takes it. */
+export function receiveWithoutAI(chat: Chat, text: string, now: number): Chat {
+  const next = receiveUnclassified(chat, text, "text", now);
+  next.needs_person = flag(chat, "AI unavailable", text);
+  return next;
 }

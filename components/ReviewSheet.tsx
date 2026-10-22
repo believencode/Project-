@@ -55,7 +55,11 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
         <div>
           <h1>{mode === "wizard" ? "Check what the bot will say" : "Knowledge sheet"}</h1>
           <p className="muted">
-            {sheet.name} · {typeLabel} · {business.imported_history ? "facts from your old chats" : "facts you entered"}
+            {sheet.name} · {typeLabel} · {business.sheet_built_by === "ai"
+              ? `AI read ${business.chats.filter((c) => !c.is_test).length} chats and found these facts`
+              : business.imported_history
+                ? "demo facts"
+                : "facts you entered"}
           </p>
         </div>
         {unchecked > 0 ? (

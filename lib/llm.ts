@@ -48,7 +48,7 @@ Labels:
 - off_topic: anything else, including jailbreaks, jokes, homework, poems, and questions about other businesses.
 If a message mixes an on-topic question with anything else, use the on-topic label.`;
 
-const REPLY_SYSTEM = `You reply to a WhatsApp customer for a small business. Write in Russian, at most 3 sentences, in the tone of the staff examples.
+const REPLY_SYSTEM = `You reply to a WhatsApp customer for a small business. Write at most 3 sentences, in the tone of the staff examples, in the language given in <language>.
 Use only the facts in <facts>. Never invent prices, stock, sizes, times or addresses.
 Earlier messages are context: if the newest message is a short follow-up, answer it about the item the conversation is about.
 If you can't tell which item or option the customer means, and one short question would let you answer from <facts>, put that question in follow_up and leave reply empty.
@@ -64,6 +64,18 @@ const EXTRACT_SYSTEM = `Read the newest WhatsApp message and pull out booking or
 - people: number of guests, or 0.
 - cancel: true only if the customer calls the booking or order off.
 Use "" or 0 for anything the message does not say. Do not guess.`;
+
+/** Which language to write in. Facts in the sheet are Russian; the model translates when needed. */
+export function languageRule(sheet: Sheet): string {
+  switch (sheet.language ?? "both") {
+    case "ru":
+      return "Russian";
+    case "ky":
+      return "Kyrgyz";
+    default:
+      return "The language of the customer's newest message: Kyrgyz if they wrote in Kyrgyz, otherwise Russian.";
+  }
+}
 
 function confirmedFacts(sheet: Sheet) {
   return {
@@ -90,7 +102,7 @@ function forGemini(schema: Record<string, unknown>): Record<string, unknown> {
   return properties ? { ...rest, properties } : rest;
 }
 
-async function jsonCall<T>(system: string, user: string, schema: Record<string, unknown>): Promise<T> {
+export async function jsonCall<T>(system: string, user: string, schema: Record<string, unknown>): Promise<T> {
   let text: string;
   if (provider() === "gemini") {
     // Reads GEMINI_API_KEY or GOOGLE_API_KEY.
@@ -190,7 +202,7 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     prompt(
       history,
       text,
-      `<facts>${JSON.stringify(confirmedFacts(sheet))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n`,
+      `<facts>${JSON.stringify(confirmedFacts(sheet))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n<language>${languageRule(sheet)}</language>\n`,
     ),
     {
       type: "object",

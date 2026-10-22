@@ -18,9 +18,12 @@ By default the bot classifies and replies with keyword rules. To use an AI model
 | Gemini Flash Lite | `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...` | `gemini-3.1-flash-lite` |
 | Claude | `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` | `claude-opus-5-5` |
 
-`LLM_MODEL` overrides the model (for example a pinned Gemini version). The test box shows which path and model
-answered. If a call fails, the route falls back to the rules. Counts, pauses, handoffs and booking/order requests
-stay in code whichever model runs.
+`LLM_MODEL` overrides the model (for example a pinned Gemini version).
+
+With an AI key, the AI reads the imported chats to build the knowledge sheet and writes every bot message in the
+customer's language; a guard blocks any message with a number that isn't a confirmed fact. If the AI can't be
+reached, the bot sends nothing and the chat goes to a person. Without a key the app runs in demo mode (keyword rules
+and fixed lines, labelled "fixed line"). Counts, pauses, handoffs and booking/order requests stay in code either way.
 
 State lives in the browser (localStorage). **Settings → Reset prototype** starts over.
 
@@ -44,7 +47,10 @@ including the basic-facts screen.
 
 - `lib/rules.ts` — keyword classifier and replies from confirmed sheet facts, with conversation memory
 - `lib/actions.ts` — booking/order details: what to collect, the questions, reading answers
-- `lib/llm.ts` — optional AI classifier, replies and booking details via Gemini or Claude (`/api/reply`)
+- `lib/llm.ts` — AI classifier, replies and booking details via Gemini or Claude
+- `lib/writer.ts` — the AI writes every bot message from its intent; `lib/guard.ts` checks each one before sending
+- `lib/sheetBuilder.ts` — the AI drafts the knowledge sheet from imported chats
+- `app/api/turn`, `app/api/settle`, `app/api/build-sheet` — server routes for a customer message, a staff confirm/decline, and setup
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)
 - `lib/fixtures.ts` — shoe shop and café sheets, 8 demo chats
 - `app/` — wizard (`/setup`), review (`/review`), live + test box (`/live`), inbox, settings

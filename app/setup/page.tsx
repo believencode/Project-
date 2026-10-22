@@ -90,22 +90,49 @@ export default function SetupPage() {
   const go = (s: Step) => setHistory((h) => [...h, s]);
   const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
 
-  // "Reading chats" progress, then the review screen.
+  // "Reading chats": the AI reads the imported chats and drafts the sheet, then the review screen.
+  const [readError, setReadError] = useState<string | null>(null);
+  const [readTry, setReadTry] = useState(0);
   useEffect(() => {
     if (step !== "reading") return;
-    const t = setTimeout(() => {
-      const kind = type === "cafe" ? "cafe" : "shop";
-      setBusiness(demoBusiness(kind, name.trim() || undefined));
+    let cancelled = false;
+    setReadError(null);
+    const kind = type === "cafe" ? "cafe" : "shop";
+    const demo = demoBusiness(kind, name.trim() || undefined);
+    (async () => {
+      let business: Business = { ...demo, sheet_built_by: "demo" };
+      try {
+        const res = await fetch("/api/build-sheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chats: demo.chats, type: demo.sheet.type, name: demo.sheet.name }),
+        });
+        const body = (await res.json()) as { sheet?: Sheet | null; error?: string };
+        if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+        if (body.sheet) business = { ...demo, sheet: body.sheet, sheet_built_by: "ai" };
+      } catch (err) {
+        if (!(err instanceof TypeError)) {
+          // The AI is configured but failed: say so instead of showing demo facts as if the AI read them.
+          if (!cancelled) setReadError(err instanceof Error ? err.message : "The AI could not read the chats.");
+          return;
+        }
+        // No server at all (static demo): keep the demo facts.
+      }
+      if (cancelled) return;
+      setBusiness(business);
       setHistory((h) => [...h.slice(0, -1), "review"]);
-    }, 1800);
-    return () => clearTimeout(t);
-  }, [step, type, name, setBusiness]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, type, name, setBusiness, readTry]);
 
   const buildFromBackup = () => {
     const t = type ?? "other";
     const sheet: Sheet = {
       name: name.trim() || "Мой бизнес",
       type: t,
+      language: language ?? "both",
       hours: facts.hours.trim(),
       address: facts.address.trim(),
       prices: facts.prices
@@ -212,8 +239,18 @@ export default function SetupPage() {
         {step === "reading" && (
           <div style={{ textAlign: "center" }}>
             <h1>Reading chats</h1>
-            <div className="spinner" />
-            <p className="muted">Reading one-to-one chats from the last 6 months. Group chats are skipped.</p>
+            {readError ? (
+              <>
+                <div className="notice warn">{readError}</div>
+                <div className="row" style={{ justifyContent: "center" }}>
+                  <button onClick={() => setHistory((h) => [...h.slice(0, -1), "asks"])}>Skip and answer questions</button>
+                  <button className="primary" onClick={() => setReadTry((n) => n + 1)}>Try again</button>
+                </div>
+              </>
+            ) : (
+              <div className="spinner" />
+            )}
+            <p className="muted">The AI is reading one-to-one chats from the last 6 months to learn your prices, hours and how your staff reply. Group chats are skipped.</p>
             {type !== "cafe" && type !== "shop" ? (
               <p className="small muted">Prototype: this uses the demo shoe shop chats.</p>
             ) : null}
@@ -278,7 +315,7 @@ export default function SetupPage() {
                 <button key={l.id} className={`choice ${language === l.id ? "on" : ""}`} onClick={() => setLanguage(l.id)}>{l.label}</button>
               ))}
             </div>
-            {language && language !== "ru" ? <p className="muted small">Kyrgyz is coming soon. For now the bot replies in Russian.</p> : null}
+            {language === "both" ? <p className="muted small">The bot replies in the customer&apos;s language: Kyrgyz if they write in Kyrgyz, otherwise Russian.</p> : null}
             <div className="row between"><Back /><button className="primary" disabled={!language} onClick={() => go("notes")}>Next</button></div>
           </>
         )}

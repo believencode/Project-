@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReplyDecision } from "@/lib/types";
 import { useNow, useStore } from "@/lib/store";
 import { isPaused } from "@/lib/engine";
@@ -26,6 +26,10 @@ export default function LivePage() {
   const now = useNow();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<{ ai: boolean; model: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/mode").then((r) => r.json()).then(setMode).catch(() => setMode({ ai: false, model: null }));
+  }, []);
   const [last, setLast] = useState<{ text: string; decision: ReplyDecision | null; requestsBefore: number } | null>(null);
 
   if (!business) return <NeedsBusiness />;
@@ -46,7 +50,8 @@ export default function LivePage() {
 
   // The bot reply (if any) that follows the latest customer message.
   const lastCustomer = chat.messages.findLastIndex((m) => m.from === "customer");
-  const botAfter = chat.messages.slice(lastCustomer + 1).find((m) => m.from === "bot")?.text ?? null;
+  const botMsg = chat.messages.slice(lastCustomer + 1).find((m) => m.from === "bot");
+  const botAfter = botMsg?.text ?? null;
 
   return (
     <main className="page">
@@ -55,6 +60,13 @@ export default function LivePage() {
           <span className="status-dot" />
           <div>
             <h1 style={{ margin: 0 }}>Bot is answering</h1>
+            {mode ? (
+              mode.ai ? (
+                <span className="badge ok">AI writes every reply · {mode.model}</span>
+              ) : (
+                <span className="badge check">Demo mode: keyword rules and fixed lines — set LLM_PROVIDER to turn on AI</span>
+              )
+            ) : null}
             <span className="muted small">
               {business.sheet.name} · {others.filter((c) => !isPaused(c, now)).length} of {others.length} chats on the bot ·{" "}
               {business.chats.filter((c) => c.needs_person).length} need a person
@@ -118,12 +130,21 @@ export default function LivePage() {
                   <div>
                     <span className="muted small">Reply: </span>
                     {botAfter ?? <em className="muted">no reply — AI stopped on this chat</em>}
+                    {botMsg?.written_by ? (
+                      <span className={botMsg.written_by === "ai" ? "badge ok" : "badge plain"} style={{ marginLeft: 6 }}>
+                        {botMsg.written_by === "ai" ? "written by AI" : "fixed line"}
+                      </span>
+                    ) : null}
                   </div>
                 </>
               ) : (
                 <div>
                   <span className="badge info">not classified</span>{" "}
-                  <span className="muted">{paused ? "Staff has this chat, so the bot stays quiet." : "No reply."}</span>
+                  <span className="muted">{paused
+                      ? "Staff has this chat, so the bot stays quiet."
+                      : chat.needs_person?.reason === "AI unavailable"
+                        ? "The AI couldn't be reached, so no canned reply was sent — the chat went to a person."
+                        : "No reply."}</span>
                 </div>
               )}
             </div>

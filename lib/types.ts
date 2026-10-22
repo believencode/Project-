@@ -28,9 +28,13 @@ export interface AvailabilityNote {
   needs_check: boolean;
 }
 
+/** Reply language: always Russian, always Kyrgyz, or match the customer. */
+export type ReplyLanguage = "ru" | "ky" | "both";
+
 export interface Sheet {
   name: string;
   type: BusinessType;
+  language?: ReplyLanguage;
   hours: string;
   address: string;
   prices: PriceItem[];
@@ -42,6 +46,23 @@ export interface Sheet {
 
 export type Sender = "customer" | "bot" | "staff" | "system";
 
+/**
+ * What a bot message has to say. Code decides the intent; the AI writes the
+ * words. `answer` and `follow_up` are written by the reply model directly.
+ */
+export type BotIntent =
+  | { type: "answer" }
+  | { type: "follow_up" }
+  | { type: "greeting" }
+  | { type: "off_topic" }
+  | { type: "handoff" }
+  | { type: "missing" }
+  | { type: "ask_slot"; slot: Slot; kind: "booking" | "order"; options?: string[]; retry?: boolean }
+  | { type: "draft_done"; kind: "booking" | "order"; summary: string }
+  | { type: "cancelled" }
+  | { type: "confirmed"; kind: "booking" | "order"; summary: string }
+  | { type: "declined"; kind: "booking" | "order"; summary: string };
+
 export interface Message {
   id: string;
   from: Sender;
@@ -50,9 +71,12 @@ export interface Message {
   kind?: "text" | "voice" | "photo";
   label?: Label;
   path?: "LLM" | "rules";
+  intent?: BotIntent;
+  /** Bot messages: written by the AI, or a fixed line (demo mode without an AI key). */
+  written_by?: "ai" | "template";
 }
 
-export type NeedsPersonReason = "Off-topic" | "Missing answer" | "Voice/photo" | "Booking/order";
+export type NeedsPersonReason = "Off-topic" | "Missing answer" | "Voice/photo" | "Booking/order" | "AI unavailable";
 
 export interface NeedsPerson {
   reason: NeedsPersonReason;
@@ -123,6 +147,8 @@ export interface Business {
   imported_history: boolean;
   live: boolean;
   backup?: BackupAnswers;
+  /** Who built the sheet from the imported chats: the AI, or demo facts (no AI key). */
+  sheet_built_by?: "ai" | "demo";
 }
 
 /** What /api/reply returns for one customer message. */

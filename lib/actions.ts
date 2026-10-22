@@ -155,3 +155,8 @@ export function declinedLine(kind: Draft["kind"], summary: string): string {
 }
 
 export const CANCEL_LINE = "Хорошо, отменил. Если что-то понадобится — пишите.";
+
+/** Choices to offer when asking for a detail, e.g. the items for "what do you want to order?". */
+export function slotOptions(slot: Slot, sheet: Sheet): string[] | undefined {
+  return slot === "item" && sheet.prices.length > 0 ? sheet.prices.slice(0, 4).map((p) => p.item) : undefined;
+}

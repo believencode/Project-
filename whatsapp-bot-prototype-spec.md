@@ -125,6 +125,17 @@ Build it from the business type, not from a hard-coded list:
 | services | цены, заказ, сроки, адрес и часы работы |
 | other | цены, адрес и часы работы |
 
+## Fully AI-written replies
+
+The product promise is "AI answers every message", not templates. So:
+
+- **Code decides what to do, the AI writes how to say it.** Every bot message has an intent (answer, greeting, off-topic redirect, handoff, missing answer, ask for a detail, booking noted, cancelled, confirmed, declined). In AI mode the model writes each one in the business's tone, from the staff examples.
+- **Language.** The bot replies in the customer's language (Kyrgyz if they write in Kyrgyz, otherwise Russian), unless the owner chose Russian only or Kyrgyz only in setup.
+- **Guard.** Every AI message is checked before sending: every number in it must come from a confirmed fact, the request being discussed, or the customer's own words. A handoff or a question may not mention prices. No links, no template brackets, at most 3 sentences. A failed message is rewritten once with the reason; an answer that still fails becomes "a staff member will check".
+- **No canned fallback.** If the AI can't be reached or can't write a safe message, the bot sends nothing and the chat goes to a person with the reason "AI unavailable".
+- **AI builds the sheet.** "Reading chats" sends the imported chats to the AI, which drafts the knowledge sheet. Only facts whose numbers appear in the chats are kept, tone examples must be real staff replies, and every price and stock note starts as "check this".
+- **Demo mode.** Without an AI key the prototype uses keyword rules and fixed lines, and labels each such message "fixed line" so it is never mistaken for AI.
+
 ## Conversation memory
 
 The classifier and the reply model see the last 8 text messages of the chat (customer, bot, staff). Short follow-ups are understood in context:
