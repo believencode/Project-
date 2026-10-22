@@ -29,6 +29,13 @@ Everything is saved in Postgres. Without `DATABASE_URL` the app uses PGlite, Pos
 process and stored in `./data/pg`, so there is nothing to install. Owners sign up with email and password; each owner
 has one business and sees only their own data. **Settings → Reset prototype** deletes the business.
 
+## Languages
+
+The owner app is in **Russian** by default; **Kyrgyz** and English are one tap away (the switch in the top bar, or
+Settings → App language). The choice is kept in a cookie, so it survives reloads. All app text is in `lib/i18n/`
+(`en.ts` lists every key; `ru.ts` and `ky.ts` must have them all, with the same `{placeholders}` — `lib/i18n.test.ts`
+checks this). Messages to customers are not translated by the app: the AI writes them in the customer's language.
+
 ## Knowledge base
 
 Besides prices, hours, address and stock notes, the bot knows **other facts** (delivery, payment, returns, parking…)

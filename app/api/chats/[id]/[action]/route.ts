@@ -52,7 +52,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (typeof body.text !== "string") return NextResponse.json({ error: "text required" }, { status: 400 });
         const r = await runTurn(before, sheet, body.text, body.kind ?? "text", now);
         after = r.chat;
-        extra = { decision: r.decision, ai_error: r.ai_error };
+        // Which AI model answered stays on the server.
+        extra = { decision: r.decision && { ...r.decision, model: undefined }, ai_error: r.ai_error };
         break;
       }
       case "staff":

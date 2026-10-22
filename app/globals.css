@@ -219,3 +219,6 @@ input, textarea, select { font-size: 16px; } /* no zoom-on-focus on iPhone */
 .request-card .value { font-weight: 600; font-size: 1.05rem; margin: 2px 0; }
 .badge.wrap { white-space: normal; text-align: left; }
 html, body { overflow-x: hidden; }
+
+/* Language switch in the top bar */
+.lang-select { width: auto; padding: 0.3rem 0.4rem; font-size: 0.85rem; border-radius: 6px; background: var(--card, transparent); }

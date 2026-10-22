@@ -115,6 +115,14 @@ export type BotIntent =
   | { type: "confirmed"; kind: "booking" | "order"; summary: string }
   | { type: "declined"; kind: "booking" | "order"; summary: string };
 
+/** What a system line in a chat says, so the app can show it in the owner's language. */
+export type SystemNote =
+  | { code: "handoff_off_topic" }
+  | { code: "settled"; ok: boolean; summary: string }
+  | { code: "paused"; echo: boolean }
+  | { code: "resumed" }
+  | { code: "pause_ended" };
+
 export interface Message {
   id: string;
   from: Sender;
@@ -128,6 +136,8 @@ export interface Message {
   written_by?: "ai" | "template";
   /** WhatsApp chats: the message could not be sent to the customer. */
   delivery?: "failed";
+  /** System lines: what happened (the English `text` stays for logs and older app versions). */
+  note?: SystemNote;
 }
 
 export type NeedsPersonReason = "Off-topic" | "Missing answer" | "Voice/photo" | "Booking/order" | "AI unavailable";

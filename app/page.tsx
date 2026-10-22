@@ -4,24 +4,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { demoBusiness, useStore } from "@/lib/store";
 import { attachSources } from "@/lib/sources";
+import { useT } from "@/lib/i18n/react";
 
 export default function Home() {
   const { ready, business, setBusiness } = useStore();
   const router = useRouter();
+  const { t } = useT();
   if (!ready) return null;
 
   return (
     <main className="page narrow">
       <div className="card stack">
         <h1>Kapso Desk</h1>
-        <p>
-          Connect your WhatsApp Business number. We read your old one-to-one chats and set up a bot that answers only your
-          business&apos;s questions. Staff keep using WhatsApp Business on the phone.
-        </p>
+        <p>{t("home_intro")}</p>
         {business ? (
           <div className="notice">
-            <strong>{business.sheet.name}</strong> is {business.live ? "live" : "not live yet"}.{" "}
-            <Link href={business.live ? "/live" : "/setup"}>{business.live ? "Open" : "Continue setup"}</Link>
+            <strong>{business.sheet.name}</strong> {t(business.live ? "home_is_live" : "home_not_live")}{" "}
+            <Link href={business.live ? "/live" : "/setup"}>{t(business.live ? "home_open" : "home_continue")}</Link>
           </div>
         ) : null}
         <div className="row">
@@ -32,7 +31,7 @@ export default function Home() {
               router.push("/setup");
             }}
           >
-            Set up a business
+            {t("home_setup")}
           </button>
           <button
             onClick={() => {
@@ -41,12 +40,10 @@ export default function Home() {
               router.push("/review");
             }}
           >
-            Skip to the demo shoe shop
+            {t("home_demo")}
           </button>
         </div>
-        <p className="muted small">
-          Prototype: WhatsApp connection, chat sync and sending are mocked. Pick «Café» in setup to see the café demo.
-        </p>
+        <p className="muted small">{t("home_note")}</p>
       </div>
     </main>
   );

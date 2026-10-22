@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import type { BusinessType, Chat } from "@/lib/types";
 import { llmEnabled } from "@/lib/llm";
 import { buildSheetWithAI } from "@/lib/sheetBuilder";
+import { currentOwner } from "@/lib/session";
 
 // AI calls can take several seconds.
 export const maxDuration = 60;
 
 /** The AI reads the imported chats and drafts the knowledge sheet. */
 export async function POST(req: Request) {
+  // Only a logged-in owner may spend AI calls.
+  const owner = await currentOwner();
+  if (owner instanceof NextResponse) return owner;
   const { chats, type, name } = (await req.json()) as { chats: Chat[]; type: BusinessType; name: string };
   if (!Array.isArray(chats) || !type) return NextResponse.json({ error: "chats and type are required" }, { status: 400 });
   // Demo mode: the client falls back to the demo facts.

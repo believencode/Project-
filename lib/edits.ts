@@ -1,6 +1,7 @@
 import type { FactSource, Sheet } from "./types";
 import { numbersIn } from "./guard";
 import { findItems, normalize } from "./text";
+import { translate, type Lang } from "./i18n";
 
 /**
  * Changes the owner asks for in their own words ("лагман теперь 280,
@@ -44,7 +45,8 @@ function noteIndex(sheet: Sheet, item: string): number {
  * Keep only operations the request backs up: a new price must appear in the
  * owner's words; a removal must name something that exists.
  */
-export function validateOps(ops: EditOp[], sheet: Sheet, request: string): { ok: EditOp[]; dropped: string[] } {
+export function validateOps(ops: EditOp[], sheet: Sheet, request: string, lang: Lang = "en"): { ok: EditOp[]; dropped: string[] } {
+  const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string>) => translate(lang, key, vars);
   const said = new Set(numbersIn(request));
   const known = new Set([...said, ...numbersIn([sheet.hours, sheet.address].join(" "))]);
   const ok: EditOp[] = [];
@@ -52,34 +54,36 @@ export function validateOps(ops: EditOp[], sheet: Sheet, request: string): { ok:
   for (const op of ops) {
     switch (op.op) {
       case "set_price":
-        if (!op.item.trim() || !(op.amount > 0) || !said.has(op.amount)) dropped.push(`price for «${op.item}»`);
+        if (!op.item.trim() || !(op.amount > 0) || !said.has(op.amount)) dropped.push(t("drop_price", { item: op.item }));
         else ok.push(op);
         break;
       case "remove_price":
-        if (priceIndex(sheet, op.item) < 0) dropped.push(`removing «${op.item}» (not in your prices)`);
+        if (priceIndex(sheet, op.item) < 0) dropped.push(t("drop_remove_price", { item: op.item }));
         else ok.push(op);
         break;
       case "remove_availability":
-        if (noteIndex(sheet, op.item) < 0) dropped.push(`removing stock note «${op.item}»`);
+        if (noteIndex(sheet, op.item) < 0) dropped.push(t("drop_remove_stock", { item: op.item }));
         else ok.push(op);
         break;
       case "remove_fact":
-        if (factIndex(sheet, op.topic) < 0) dropped.push(`removing «${op.topic}» (not in your facts)`);
+        if (factIndex(sheet, op.topic) < 0) dropped.push(t("drop_remove_fact", { topic: op.topic }));
         else ok.push(op);
         break;
       case "set_details":
-        if (priceIndex(sheet, op.item) < 0 || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(`details for «${op.item}»`);
+        if (priceIndex(sheet, op.item) < 0 || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(t("drop_details", { item: op.item }));
         else ok.push(op);
         break;
       case "set_fact":
         // A new fact's numbers must be in the owner's words.
-        if (!op.topic.trim() || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(`«${op.topic || op.text}»`);
+        if (!op.topic.trim() || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(t("drop_fact", { topic: op.topic || op.text }));
         else ok.push(op);
         break;
       case "set_hours":
       case "set_address":
       case "set_availability":
-        if (!op.text.trim() || !numbersIn(op.text).every((n) => known.has(n))) dropped.push(op.op.replace("set_", ""));
+        if (!op.text.trim() || !numbersIn(op.text).every((n) => known.has(n))) {
+          dropped.push(t(op.op === "set_hours" ? "drop_hours" : op.op === "set_address" ? "drop_address" : "drop_availability"));
+        }
         else ok.push(op);
         break;
     }
@@ -87,41 +91,45 @@ export function validateOps(ops: EditOp[], sheet: Sheet, request: string): { ok:
   return { ok, dropped };
 }
 
-export function describeOp(op: EditOp, sheet: Sheet): string {
+export function describeOp(op: EditOp, sheet: Sheet, lang: Lang = "en"): string {
+  const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate(lang, key, vars);
+  const notSet = t("not_set");
   switch (op.op) {
     case "set_price": {
       const i = priceIndex(sheet, op.item);
       return i >= 0
-        ? `${sheet.prices[i].item}: ${sheet.prices[i].amount} → ${op.amount} сом`
-        : `Add price: ${op.item} — ${op.amount} сом`;
+        ? t("op_price_change", { item: sheet.prices[i].item, from: sheet.prices[i].amount, to: op.amount })
+        : t("op_price_add", { item: op.item, amount: op.amount });
     }
     case "remove_price": {
       const i = priceIndex(sheet, op.item);
-      return `Remove price: ${i >= 0 ? sheet.prices[i].item : op.item}`;
+      return t("op_price_remove", { item: i >= 0 ? sheet.prices[i].item : op.item });
     }
     case "set_hours":
-      return `Hours: ${sheet.hours || "not set"} → ${op.text}`;
+      return t("op_hours", { from: sheet.hours || notSet, to: op.text });
     case "set_address":
-      return `Address: ${sheet.address || "not set"} → ${op.text}`;
+      return t("op_address", { from: sheet.address || notSet, to: op.text });
     case "set_availability": {
       const i = noteIndex(sheet, op.item);
-      return i >= 0 ? `Stock: «${sheet.availability[i].text}» → «${op.text}»` : `Add stock note: «${op.text}»`;
+      return i >= 0 ? t("op_stock_change", { from: sheet.availability[i].text, to: op.text }) : t("op_stock_add", { text: op.text });
     }
     case "remove_availability": {
       const i = noteIndex(sheet, op.item);
-      return `Remove stock note: «${i >= 0 ? sheet.availability[i].text : op.item}»`;
+      return t("op_stock_remove", { text: i >= 0 ? sheet.availability[i].text : op.item });
     }
     case "set_details": {
       const i = priceIndex(sheet, op.item);
-      return `${i >= 0 ? sheet.prices[i].item : op.item} details: «${op.text}»`;
+      return t("op_details", { item: i >= 0 ? sheet.prices[i].item : op.item, text: op.text });
     }
     case "set_fact": {
       const i = factIndex(sheet, op.topic);
-      return i >= 0 ? `${sheet.facts![i].topic}: «${sheet.facts![i].text}» → «${op.text}»` : `Add fact: ${op.topic} — «${op.text}»`;
+      return i >= 0
+        ? t("op_fact_change", { topic: sheet.facts![i].topic, from: sheet.facts![i].text, to: op.text })
+        : t("op_fact_add", { topic: op.topic, text: op.text });
     }
     case "remove_fact": {
       const i = factIndex(sheet, op.topic);
-      return `Remove fact: ${i >= 0 ? sheet.facts![i].topic : op.topic}`;
+      return t("op_fact_remove", { topic: i >= 0 ? sheet.facts![i].topic : op.topic });
     }
   }
 }

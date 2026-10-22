@@ -7,6 +7,8 @@ import { useNow, useStore } from "@/lib/store";
 import { isPaused } from "@/lib/engine";
 import { ChatThread } from "@/components/ChatThread";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
+import { SLOT } from "@/components/ChatThread";
+import { useT } from "@/lib/i18n/react";
 
 function script(type: string, firstItem: string | undefined): string[] {
   if (type === "cafe") {
@@ -24,11 +26,12 @@ function script2(type: string): string[] {
 export default function LivePage() {
   const { business, sendCustomer, sendStaff, resetTestChat } = useStore();
   const now = useNow();
+  const { t } = useT();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<{ ai: boolean; model: string | null } | null>(null);
+  const [mode, setMode] = useState<{ ai: boolean } | null>(null);
   useEffect(() => {
-    fetch("/api/mode").then((r) => r.json()).then(setMode).catch(() => setMode({ ai: false, model: null }));
+    fetch("/api/mode").then((r) => r.json()).then(setMode).catch(() => setMode({ ai: false }));
   }, []);
   const [last, setLast] = useState<{ text: string; decision: ReplyDecision | null; requestsBefore: number } | null>(null);
 
@@ -59,27 +62,31 @@ export default function LivePage() {
         <div className="row">
           <span className="status-dot" />
           <div>
-            <h1 style={{ margin: 0 }}>Bot is answering</h1>
+            <h1 style={{ margin: 0 }}>{t("live_title")}</h1>
             {mode ? (
               mode.ai ? (
-                <span className="badge ok wrap">AI writes every reply · {mode.model}</span>
+                <span className="badge ok wrap">{t("ai_badge")}</span>
               ) : (
-                <span className="badge check wrap">Demo mode: keyword rules and fixed lines — set LLM_PROVIDER to turn on AI</span>
+                <span className="badge check wrap">{t("demo_badge")}</span>
               )
             ) : null}
             <span className="muted small">
-              {business.sheet.name} · {others.filter((c) => !isPaused(c, now)).length} of {others.length} chats on the bot ·{" "}
-              {business.chats.filter((c) => c.needs_person).length} need a person
+              {t("live_stats", {
+                name: business.sheet.name,
+                on: others.filter((c) => !isPaused(c, now)).length,
+                total: others.length,
+                need: business.chats.filter((c) => c.needs_person).length,
+              })}
             </span>
           </div>
         </div>
-        <Link href="/inbox" className="btn primary">Open inbox →</Link>
+        <Link href="/inbox" className="btn primary">{t("open_inbox")}</Link>
       </div>
 
       <div className="grid2">
         <div className="card stack">
-          <h2>Test box</h2>
-          <p className="muted small">Type as a customer. Messages go into the «Test customer» chat, which also shows in the inbox.</p>
+          <h2>{t("test_box")}</h2>
+          <p className="muted small">{t("test_hint")}</p>
 
           <div className="script row">
             {script(business.sheet.type, business.sheet.prices[0]?.item).map((s, i) => (
@@ -90,7 +97,7 @@ export default function LivePage() {
           </div>
 
           <div>
-            <div className="small muted" style={{ marginBottom: 6 }}>Memory, follow-ups and requests — tap in order:</div>
+            <div className="small muted" style={{ marginBottom: 6 }}>{t("memory_hint")}</div>
             <div className="script row">
               {script2(business.sheet.type).map((s, i) => (
                 <button key={s} onClick={() => send(s)} disabled={busy}>
@@ -101,50 +108,49 @@ export default function LivePage() {
           </div>
 
           <div className="row" style={{ flexWrap: "nowrap" }}>
-            <input type="text" value={text} placeholder="Сообщение клиента…" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(text)} />
-            <button className="primary" onClick={() => send(text)} disabled={busy || !text.trim()}>Send</button>
+            <input type="text" value={text} placeholder={t("customer_ph")} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(text)} />
+            <button className="primary" onClick={() => send(text)} disabled={busy || !text.trim()}>{t("send")}</button>
           </div>
 
           <div className="row">
-            <button onClick={() => sendStaff(chat.id, "Здравствуйте! Сейчас уточню.", "echo")}>6. Staff reply (from phone)</button>
-            <button className="ghost" onClick={() => { resetTestChat(); setLast(null); }}>Reset test chat</button>
+            <button onClick={() => sendStaff(chat.id, "Здравствуйте! Сейчас уточню.", "echo")}>{t("staff_reply_phone")}</button>
+            <button className="ghost" onClick={() => { resetTestChat(); setLast(null); }}>{t("reset_test")}</button>
           </div>
 
           {last ? (
             <div className="result stack">
               <div>
-                <span className="muted small">Message </span>«{last.text}»
+                <span className="muted small">{t("message")} </span>«{last.text}»
               </div>
               {last.decision ? (
                 <>
                   <div className="row">
-                    <span className="badge info">label: {last.decision.label}</span>
-                    <span className="badge plain">off_topic_count: {chat.off_topic_count}</span>
-                    <span className="badge plain">path: {last.decision.path}{last.decision.model ? ` · ${last.decision.model}` : ""}</span>
-                    {last.decision.missing ? <span className="badge check">missing answer</span> : null}
-                    {last.decision.follow_up ? <span className="badge check">follow-up question</span> : null}
-                    {last.decision.continues_draft ? <span className="badge plain">answered the bot&apos;s question</span> : null}
-                    {chat.draft ? <span className="badge plain">collecting {chat.draft.kind}: needs {chat.draft.asked}</span> : null}
-                    {(chat.requests?.length ?? 0) > last.requestsBefore ? <span className="badge ok">request created → staff confirm</span> : null}
+                    <span className="badge info">{t("label_is", { label: t(`label_${last.decision.label}`) })}</span>
+                    <span className="badge plain">{t("off_topic_n", { n: chat.off_topic_count })}</span>
+                    {last.decision.missing ? <span className="badge check">{t("missing_answer")}</span> : null}
+                    {last.decision.follow_up ? <span className="badge check">{t("follow_up_q")}</span> : null}
+                    {last.decision.continues_draft ? <span className="badge plain">{t("answered_bots_q")}</span> : null}
+                    {chat.draft ? (
+                      <span className="badge plain">
+                        {t("collecting", { kind: t(`kind_${chat.draft.kind}`), slot: chat.draft.asked ? t(SLOT[chat.draft.asked]) : "—" })}
+                      </span>
+                    ) : null}
+                    {(chat.requests?.length ?? 0) > last.requestsBefore ? <span className="badge ok">{t("request_created")}</span> : null}
                   </div>
                   <div>
-                    <span className="muted small">Reply: </span>
-                    {botAfter ?? <em className="muted">no reply — AI stopped on this chat</em>}
+                    <span className="muted small">{t("reply")} </span>
+                    {botAfter ?? <em className="muted">{t("no_reply_ai_stopped")}</em>}
                     {botMsg?.written_by ? (
                       <span className={botMsg.written_by === "ai" ? "badge ok" : "badge plain"} style={{ marginLeft: 6 }}>
-                        {botMsg.written_by === "ai" ? "written by AI" : "fixed line"}
+                        {t(botMsg.written_by === "ai" ? "written_by_ai" : "fixed_line")}
                       </span>
                     ) : null}
                   </div>
                 </>
               ) : (
                 <div>
-                  <span className="badge info">not classified</span>{" "}
-                  <span className="muted">{paused
-                      ? "Staff has this chat, so the bot stays quiet."
-                      : chat.needs_person?.reason === "AI unavailable"
-                        ? "The AI couldn't be reached, so no canned reply was sent — the chat went to a person."
-                        : "No reply."}</span>
+                  <span className="badge info">{t("not_classified")}</span>{" "}
+                  <span className="muted">{t(paused ? "staff_has_chat" : chat.needs_person?.reason === "AI unavailable" ? "ai_unreachable" : "no_reply")}</span>
                 </div>
               )}
             </div>
