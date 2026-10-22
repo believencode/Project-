@@ -136,8 +136,12 @@ const g = globalThis as unknown as { __kapsoDb?: Promise<Db> };
 export function getDb(): Promise<Db> {
   // Serverless hosts have no lasting disk: the built-in database would lose everything.
   if (process.env.VERCEL && !process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is required online (Vercel). Add the Neon connection string in the project settings.");
+    return Promise.reject(new Error("DATABASE_URL is required online (Vercel). Add the Neon connection string in the project settings."));
   }
-  g.__kapsoDb ??= openDb({ url: process.env.DATABASE_URL });
+  // A failed connection is not kept: the next request tries again.
+  g.__kapsoDb ??= openDb({ url: process.env.DATABASE_URL }).catch((err) => {
+    g.__kapsoDb = undefined;
+    throw err;
+  });
   return g.__kapsoDb;
 }
