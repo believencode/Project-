@@ -28,6 +28,7 @@ export async function deliverNew(
     try {
       const id = await sendText(row.kapso_phone_number_id, to, m.text);
       if (id) waIds[m.id] = id;
+      if (m.from === "staff") console.log(`WhatsApp → +${to} «${m.text}» (staff, from the inbox)`);
     } catch (err) {
       console.error(`WhatsApp send failed for ${after.id}:`, err instanceof KapsoError ? err.message : err);
       messages[i] = { ...m, text: m.text, delivery: "failed" };

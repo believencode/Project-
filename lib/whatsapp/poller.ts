@@ -51,7 +51,13 @@ async function handleInbound(db: Db, row: BusinessRow, m: KapsoMessage) {
     // Not live yet: keep the message for staff, don't answer.
     const after = row.data.live ? (await runTurn(before, row.data.sheet, text, kind, at)).chat : receiveUnclassified(before, text, kind, at);
     const customerMsg = after.messages.slice(before.messages.length).find((x) => x.from === "customer");
-    const delivered = await deliverNew(db, row, { ...before, messages: after.messages.slice(0, before.messages.length) }, after);
+    const delivered = await deliverNew(db, row, before, after);
+    const label = after.messages.find((x) => x.id === customerMsg?.id)?.label ?? (row.data.live ? "not classified" : "not live");
+    console.log(`WhatsApp ← ${before.phone} «${kind === "text" ? text : `[${m.type}]`}» [${label}]`);
+    for (const x of delivered.chat.messages.slice(before.messages.length).filter((x) => x.from === "bot")) {
+      console.log(`WhatsApp → ${before.phone} «${x.text}»${x.delivery === "failed" ? " (NOT DELIVERED)" : ""}`);
+    }
+    if (delivered.chat.needs_person && !before.needs_person) console.log(`WhatsApp ! ${before.phone} needs a person: ${delivered.chat.needs_person.reason}`);
     await saveChat(db, row.id, delivered.chat, {
       waId,
       waIds: { ...delivered.waIds, ...(customerMsg ? { [customerMsg.id]: m.id } : {}) },
@@ -67,6 +73,7 @@ async function handleStaffEcho(db: Db, row: BusinessRow, m: KapsoMessage) {
     const before = (await loadChat(db, row.id, chatId)) ?? newWhatsAppChat(waId);
     const after = staffReply(before, m.text?.body ?? "", Number(m.timestamp) * 1000, "echo");
     await saveChat(db, row.id, after, { waId, waIds: { [after.messages[after.messages.length - 2].id]: m.id } });
+    console.log(`WhatsApp ⏸ staff replied to ${before.phone} from the phone — bot paused 30 min in that chat`);
   });
 }
 
