@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { pendingSuggestions } from "@/lib/knowledge";
 
 export function TopBar() {
   const path = usePathname();
@@ -13,12 +14,13 @@ export function TopBar() {
         ["/live", "Live"],
         ["/inbox", "Inbox"],
         ["/requests", "Requests"],
-        ["/review", "Sheet"],
+        ["/review", "Knowledge"],
         ["/settings", "Settings"],
       ]
     : [];
   const waiting = business?.chats.filter((c) => c.needs_person).length ?? 0;
   const pending = business?.chats.flatMap((c) => c.requests ?? []).filter((r) => r.status === "pending").length ?? 0;
+  const learned = business ? pendingSuggestions(business.chats).length : 0;
 
   return (
     <header className="topbar">
@@ -31,6 +33,7 @@ export function TopBar() {
             {label}
             {href === "/inbox" && waiting > 0 ? <span className="badge alert" style={{ marginLeft: 6 }}>{waiting}</span> : null}
             {href === "/requests" && pending > 0 ? <span className="badge check" style={{ marginLeft: 6 }}>{pending}</span> : null}
+            {href === "/review" && learned > 0 ? <span className="badge info" style={{ marginLeft: 6 }}>{learned}</span> : null}
           </Link>
         ))}
       </nav>

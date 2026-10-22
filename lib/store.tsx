@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Business, Chat, Message, ReplyDecision, Sheet } from "./types";
+import { newFactId } from "./knowledge";
 
 /**
  * The web app's view of the server. Everything is saved in the database through
@@ -32,6 +33,8 @@ interface Store {
   open: (chatId: string) => Promise<void>;
   settle: (chatId: string, requestId: string, ok: boolean) => Promise<void>;
   resetTestChat: () => Promise<void>;
+  /** Add a fact learned from a staff answer to the knowledge base, or dismiss it. */
+  settleSuggestion: (chatId: string, suggestionId: string, fact: { topic: string; text: string } | null) => Promise<void>;
   deleteImportedChats: () => Promise<void>;
 }
 
@@ -218,6 +221,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     resetTestChat: async () => {
       await chatAction("test", "reset").catch(quiet);
+    },
+    settleSuggestion: async (chatId, suggestionId, fact) => {
+      if (fact) {
+        const b = ref.current;
+        if (!b) return;
+        // Added by the owner, so it's confirmed; the owner is the source.
+        const added = { id: newFactId(), topic: fact.topic.trim(), text: fact.text.trim(), needs_check: false, source: { by: "owner" as const, at: Date.now() } };
+        show({ ...b, sheet: { ...b.sheet, facts: [...(b.sheet.facts ?? []), added] } });
+        sheetDirty.current = true;
+        await flushSheet();
+      }
+      await chatAction(chatId, "suggestion", { suggestionId, status: fact ? "added" : "dismissed" }).catch(quiet);
     },
     deleteImportedChats: async () => {
       await enqueue(() => api("DELETE", "/api/chats/imported")).catch(quiet);

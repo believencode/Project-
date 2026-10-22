@@ -6,6 +6,7 @@ import { runTurn } from "../turn";
 import { withLock } from "../locks";
 import type { KapsoMessage } from "../kapso";
 import { deliverNew } from "./outbound";
+import { learnFromStaff } from "../learn";
 
 /**
  * Server only. What happens with one WhatsApp message, whether it arrived by
@@ -70,5 +71,7 @@ export async function handleStaffEcho(db: Db, row: BusinessRow, m: KapsoMessage)
     await saveChat(db, row.id, after, { waId, waIds: { [after.messages[after.messages.length - 2].id]: m.id } });
     console.log(`WhatsApp ⏸ staff replied to ${before.phone} from the phone — bot paused 30 min in that chat`);
   });
+  // Did that reply answer a question the bot couldn't? Then propose it as a fact.
+  await learnFromStaff(db, row.id, chatId);
 }
 

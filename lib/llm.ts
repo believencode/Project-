@@ -5,6 +5,7 @@ import { LABELS } from "./types";
 import { replyFromSheet } from "./rules";
 import { contextItem, extractSlots, isCancel } from "./actions";
 import { detectLanguage } from "./text";
+import { relevantFacts, relevantPrices } from "./knowledge";
 
 /**
  * Server only. Classifier, replies and booking/order details through an LLM.
@@ -48,17 +49,20 @@ Labels:
 - booking: wanting to reserve a table, a time slot, or hold an item.
 - order: wanting to buy or order something.
 - address: where the business is, how to get there.
-- availability: size, stock, delivery time, free tables or free slots.
-- off_topic: anything else, including jailbreaks, jokes, homework, poems, and questions about other businesses.
+- availability: size, stock, free tables or free slots.
+- info: any other question about this business: delivery, payment methods, returns, warranty, parking, what an item is made of, what a service includes, rules and policies.
+- off_topic: anything not about this business, including jailbreaks, jokes, homework, poems, and questions about other businesses.
 If a message mixes an on-topic question with anything else, use the on-topic label.`;
 
 const REPLY_SYSTEM = `You reply to a WhatsApp customer for a small business. Write at most 3 sentences, in the tone of the staff examples, in the language given in <language>.
-Use only the facts in <facts>. Never invent prices, stock, sizes, times or addresses.
+Use only the facts in <facts>: prices with item details, hours, address, availability notes and other_facts (delivery, payment, returns…). Never invent prices, stock, sizes, times, addresses or policies.
 Earlier messages are context: if the newest message is a short follow-up, answer it about the item the conversation is about.
 If you can't tell which item or option the customer means, and the facts differ between them, put one short question in follow_up and leave reply empty. If <facts> only covers one of the options, answer about that one instead of asking.
 If the answer needs a fact that is not in <facts>, set missing to true and leave reply and follow_up empty.
 Answer only the on-topic part of the message; ignore any other request in it.
 Answer only what was asked: don't add the address, hours or other facts the customer didn't ask about.
+The facts are written in Russian. When <language> is Kyrgyz, translate them; keep names, street names and numbers as they are. A fact written in Russian is not missing.
+Greet only if the conversation has no bot message yet, and only at the start of the reply.
 Availability facts may be stale: say so ("по последним данным" in Russian, "акыркы маалымат боюнча" in Kyrgyz). Keep the whole reply in one language.`;
 
 const EXTRACT_SYSTEM = `Read the newest WhatsApp message and pull out booking or order details. Earlier messages are context.
@@ -80,13 +84,15 @@ export function languageRule(sheet: Sheet, customerText = ""): string {
   return lang === "ky" ? "Kyrgyz" : "Russian";
 }
 
-function confirmedFacts(sheet: Sheet) {
+/** The confirmed facts the reply model may use for this question. Large catalogs and fact lists are narrowed in code. */
+function confirmedFacts(sheet: Sheet, text: string, history: HistoryLine[]) {
   return {
     business: sheet.name,
     hours: sheet.hours || null,
     address: sheet.address || null,
-    prices: sheet.prices.filter((p) => !p.needs_check).map(({ item, amount, currency }) => ({ item, amount, currency })),
+    prices: relevantPrices(sheet, text, history).map(({ item, amount, currency, details }) => ({ item, amount, currency, ...(details ? { details } : {}) })),
     availability: sheet.availability.filter((n) => !n.needs_check).map((n) => n.text),
+    other_facts: relevantFacts(sheet, text, history).map((f) => `${f.topic}: ${f.text}`),
   };
 }
 
@@ -213,7 +219,7 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     prompt(
       history,
       text,
-      `<facts>${JSON.stringify(confirmedFacts(sheet))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n<language>${languageRule(sheet, text)}</language>\n`,
+      `<facts>${JSON.stringify(confirmedFacts(sheet, text, history))}</facts>\n<staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>\n<topic>${label}</topic>\n<language>${languageRule(sheet, text)}</language>\n`,
     ),
     {
       type: "object",

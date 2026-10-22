@@ -17,8 +17,9 @@ function confirmedFactsText(sheet: Sheet): string {
   return [
     sheet.hours,
     sheet.address,
-    ...sheet.prices.filter((p) => !p.needs_check).map((p) => `${p.item} ${p.amount}`),
+    ...sheet.prices.filter((p) => !p.needs_check).map((p) => `${p.item} ${p.amount} ${p.details ?? ""}`),
     ...sheet.availability.filter((n) => !n.needs_check).map((n) => n.text),
+    ...(sheet.facts ?? []).filter((f) => !f.needs_check).map((f) => f.text),
   ].join(" ");
 }
 
@@ -47,8 +48,11 @@ export function checkMessage(text: string, { intent, sheet, customerTexts }: Gua
   if (sentences > 4) return { ok: false, reason: "more than 3 sentences" };
   if (/https?:|www\.|@\w/.test(t)) return { ok: false, reason: "contains a link or handle" };
   if (/[{}[\]<>]/.test(t)) return { ok: false, reason: "contains template brackets" };
+  // A model slip like «берebiz»: Latin letters inside a Russian or Kyrgyz word.
+  if (/[а-яёңөүһ][a-z]|[a-z][а-яёңөүһ]/i.test(t)) return { ok: false, reason: "Latin letters inside a Cyrillic word" };
 
-  const sources = [...customerTexts];
+  // The business's own name may have a number in it («Обувь 10»).
+  const sources = [...customerTexts, sheet.name];
   // Only answers may quote facts; a handoff or a question must not mention prices or times.
   if (intent.type === "answer" || intent.type === "follow_up") sources.push(confirmedFactsText(sheet));
   if ("summary" in intent) sources.push(intent.summary);

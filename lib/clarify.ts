@@ -10,6 +10,7 @@ export type Question =
   | { id: string; kind: "price_conflict"; priceId: string }
   | { id: string; kind: "price"; priceId: string }
   | { id: string; kind: "availability"; noteId: string }
+  | { id: string; kind: "fact"; factId: string }
   | { id: string; kind: "hours" }
   | { id: string; kind: "address" }
   | { id: string; kind: "prices_missing" };
@@ -30,6 +31,7 @@ export function buildQuestions(sheet: Sheet): Question[] {
   }
   if (sheet.prices.length === 0) qs.push({ id: "prices-missing", kind: "prices_missing" });
   for (const n of sheet.availability) if (n.needs_check) qs.push({ id: `avail-${n.id}`, kind: "availability", noteId: n.id });
+  for (const f of sheet.facts ?? []) if (f.needs_check) qs.push({ id: `fact-${f.id}`, kind: "fact", factId: f.id });
   // Hours and address: confirm what the AI found in the chats, or ask when nothing was found.
   const unconfirmed = (src?: FactSource) => src?.by === "chat" && !src.confirmed;
   if (!sheet.hours || unconfirmed(sheet.hours_source)) qs.push({ id: "hours", kind: "hours" });
@@ -50,7 +52,7 @@ export function parsePriceLines(text: string): { item: string; amount: number }[
 
 export function applyAnswers(sheet: Sheet, questions: Question[], answers: Record<string, Answer>, now: number): Sheet {
   const owner: FactSource = { by: "owner", at: now };
-  let next: Sheet = { ...sheet, prices: [...sheet.prices], availability: [...sheet.availability] };
+  let next: Sheet = { ...sheet, prices: [...sheet.prices], availability: [...sheet.availability], facts: [...(sheet.facts ?? [])] };
 
   for (const q of questions) {
     const a = answers[q.id];
@@ -75,6 +77,13 @@ export function applyAnswers(sheet: Sheet, questions: Question[], answers: Recor
         else
           next.availability = next.availability.map((n) =>
             n.id !== q.noteId ? n : a.action === "set_text" ? { ...n, text: a.text, needs_check: false, source: owner } : { ...n, needs_check: false },
+          );
+        break;
+      case "fact":
+        if (a.action === "remove") next.facts = next.facts!.filter((f) => f.id !== q.factId);
+        else
+          next.facts = next.facts!.map((f) =>
+            f.id !== q.factId ? f : a.action === "set_text" ? { ...f, text: a.text, needs_check: false, source: owner } : { ...f, needs_check: false },
           );
         break;
       case "hours":

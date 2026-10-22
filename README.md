@@ -20,7 +20,7 @@ By default the bot classifies and replies with keyword rules. To use an AI model
 
 `LLM_MODEL` overrides the model (for example a pinned Gemini version).
 
-With an AI key, the AI reads the imported chats to build the knowledge sheet and writes every bot message in the
+With an AI key, the AI reads the imported chats to build the knowledge base and writes every bot message in the
 customer's language; a guard blocks any message with a number that isn't a confirmed fact. If the AI can't be
 reached, the bot sends nothing and the chat goes to a person. Without a key the app runs in demo mode (keyword rules
 and fixed lines, labelled "fixed line"). Counts, pauses, handoffs and booking/order requests stay in code either way.
@@ -28,6 +28,22 @@ and fixed lines, labelled "fixed line"). Counts, pauses, handoffs and booking/or
 Everything is saved in Postgres. Without `DATABASE_URL` the app uses PGlite, Postgres running inside the server
 process and stored in `./data/pg`, so there is nothing to install. Owners sign up with email and password; each owner
 has one business and sees only their own data. **Settings → Reset prototype** deletes the business.
+
+## Knowledge base
+
+Besides prices, hours, address and stock notes, the bot knows **other facts** (delivery, payment, returns, parking…)
+and **item details** (material, colours, what's included). Customers can ask anything about the business: the
+classifier labels it `info`, code picks the facts that match (all of them for small businesses, the best matches above
+30), and the AI answers only from those. If the fact isn't there, the chat goes to a person, as before.
+
+- **From past chats:** setup pulls facts and item details out of the imported chats, each linked to the message it came
+  from and confirmed by the owner one question at a time. A fee like delivery is kept as a fact, not a price.
+- **From staff answers:** when staff answer a question the bot couldn't (in the inbox or from the WhatsApp Business
+  app), the AI proposes it as a fact. It shows under **Knowledge → Learned from your staff**; one tap adds it, and the
+  bot answers that question itself next time. Replies like "сейчас уточню" or about one customer's order are skipped.
+- **In the owner's words:** "доставка теперь 250 сом, принимаем Мбанк" in **Something wrong or missing?**, or edit by hand.
+
+Code is in `lib/knowledge.ts` (picking facts, open questions) and `lib/learn.ts` (proposing facts from staff answers).
 
 ## Online: Vercel + Neon
 
@@ -98,6 +114,7 @@ including the basic-facts screen.
 - `lib/llm.ts` — AI classifier, replies and booking details via Gemini or Claude
 - `lib/writer.ts` — the AI writes every bot message from its intent; `lib/guard.ts` checks each one before sending
 - `lib/sheetBuilder.ts` — the AI drafts the knowledge sheet from imported chats
+- `lib/knowledge.ts`, `lib/learn.ts` — other facts and item details: which ones answer a question, learning from staff
 - `lib/sources.ts` — links every fact to the chat message behind it and finds older prices
 - `lib/clarify.ts` — the one-by-one questions and how answers change the sheet
 - `lib/edits.ts`, `lib/editRequest.ts` — change requests in the owner's words: AI proposes, code checks

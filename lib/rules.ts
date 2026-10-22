@@ -1,6 +1,7 @@
 import type { Draft, HistoryLine, Label, ReplyDecision, Sheet } from "./types";
 import { contextItem, extractSlots, isCancel } from "./actions";
 import { findItems, mentions, normalize, words } from "./text";
+import { bestFact } from "./knowledge";
 
 /** Keyword fallback used when no LLM is configured. */
 
@@ -16,7 +17,8 @@ const RULES: [Exclude<Label, "greeting" | "off_topic">, RegExp][] = [
   ["price", /сколько сто|сколько будет|цена|цены|цену|почем|прайс|стоимост/],
   ["booking", /брон|запиш|запис|отлож|столик на|на прием/],
   ["order", /заказ|закаж|оформ|куплю|возьму|беру|доставьте/],
-  ["availability", /размер|налич|осталис|остались|доставк|привез|свободн|окошк|слот|сколько ждать|срок/],
+  ["info", /доставк|самовывоз|оплат|картой|карту|наличными|мбанк|элсом|перевод|рассрочк|возврат|обмен|гарант|парков|примерк|wi-?fi|вайфай/],
+  ["availability", /размер|налич|осталис|остались|привез|свободн|окошк|слот|сколько ждать|срок/],
   ["hours", /во сколько|до скольки|со скольки|часы работы|режим работы|график|открыва|закрыва|работаете|открыты/],
   ["address", /адрес|где вы|где наход|как добраться|как доехать|локац|ориентир|2гис|2gis/],
   ["order", /хочу/],
@@ -84,6 +86,10 @@ export function replyFromSheet(
     case "booking":
     case "order":
       return { reply: null, missing: false };
+    case "info": {
+      const fact = bestFact(sheet, text);
+      return fact ? { reply: fact.text, missing: false } : { reply: null, missing: true };
+    }
     case "hours":
       return sheet.hours.trim()
         ? { reply: `Мы работаем ${sheet.hours}.`, missing: false }

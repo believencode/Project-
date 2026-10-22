@@ -5,6 +5,7 @@ import type { EditOp } from "@/lib/edits";
 import { applyOps, describeOp } from "@/lib/edits";
 import { useStore } from "@/lib/store";
 import { Source } from "./Source";
+import { FactSuggestions } from "./FactSuggestions";
 
 const LANGUAGE: Record<string, string> = {
   ru: "Russian",
@@ -19,13 +20,14 @@ interface Proposal {
   unclear: string;
 }
 
-function found(sheet: { hours: string; address: string; prices: unknown[]; availability: unknown[] }): string {
+function found(sheet: { hours: string; address: string; prices: unknown[]; availability: unknown[]; facts?: unknown[] }): string {
   const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
   const parts = [
     sheet.prices.length ? n(sheet.prices.length, "price", "prices") : "",
     sheet.hours ? "your hours" : "",
     sheet.address ? "your address" : "",
     sheet.availability.length ? n(sheet.availability.length, "stock note", "stock notes") : "",
+    sheet.facts?.length ? n(sheet.facts.length, "other fact", "other facts") : "",
   ].filter(Boolean);
   if (parts.length === 0) return "nothing yet";
   return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
@@ -48,7 +50,10 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
     !sheet.address && "address",
     sheet.prices.length === 0 && "prices",
   ].filter(Boolean) as string[];
-  const unchecked = sheet.prices.filter((p) => p.needs_check).length + sheet.availability.filter((n) => n.needs_check).length;
+  const unchecked =
+    sheet.prices.filter((p) => p.needs_check).length +
+    sheet.availability.filter((n) => n.needs_check).length +
+    (sheet.facts ?? []).filter((f) => f.needs_check).length;
 
   const ask = async () => {
     if (!request.trim()) return;
@@ -94,6 +99,8 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
         <strong>Found:</strong> {found(sheet)}.
       </p>
 
+      {mode === "edit" ? <FactSuggestions /> : null}
+
       <div className="grid2">
         <div>
           <div className="card">
@@ -113,6 +120,7 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
                   <div key={p.id} style={{ marginTop: 6 }}>
                     {p.item} — {p.amount} {p.currency}
                     {p.needs_check ? <span className="badge check" style={{ marginLeft: 6 }}>not confirmed</span> : null}
+                    {p.details ? <div className="muted small">{p.details}</div> : null}
                     <Source source={p.source} />
                   </div>
                 ))}
@@ -125,6 +133,18 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
                     {n.text}
                     {n.needs_check ? <span className="badge check" style={{ marginLeft: 6 }}>not confirmed</span> : null}
                     <Source source={n.source} />
+                  </div>
+                ))}
+              </li>
+              <li>
+                <strong>Other facts</strong>
+                <div className="muted small">Delivery, payment, returns and anything else customers ask.</div>
+                {(sheet.facts ?? []).length === 0 ? <div className="muted">none yet</div> : null}
+                {(sheet.facts ?? []).map((f) => (
+                  <div key={f.id} style={{ marginTop: 6 }}>
+                    <strong className="small">{f.topic}:</strong> {f.text}
+                    {f.needs_check ? <span className="badge check" style={{ marginLeft: 6 }}>not confirmed</span> : null}
+                    <Source source={f.source} />
                   </div>
                 ))}
               </li>
@@ -167,7 +187,7 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
             <p className="muted small">Write what to change, in your own words. You&apos;ll see the changes before they&apos;re applied.</p>
             <textarea
               value={request}
-              placeholder="Например: лагман теперь 280 сом, работаем до 23:00, добавьте манты 300"
+              placeholder="Например: лагман теперь 280 сом, работаем до 23:00, доставка по Бишкеку 200 сом, принимаем Мбанк"
               onChange={(e) => setRequest(e.target.value)}
             />
             <div className="row">

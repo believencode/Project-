@@ -165,6 +165,28 @@ function QuestionView({
         </>
       );
     }
+    case "fact": {
+      const f = sheet.facts?.find((x) => x.id === q.factId);
+      if (!f) return null;
+      return (
+        <>
+          <h1>Is this right?</h1>
+          <div className="fact">
+            <div className="muted small">{f.topic}</div>
+            <div className="value">{f.text}</div>
+            <Source source={f.source} />
+          </div>
+          <p className="muted small">The bot will use this to answer questions about {f.topic.toLowerCase()}.</p>
+          {editing ? editor(f.text, "text", textAnswer) : (
+            <div className="row">
+              <button className="primary" onClick={() => onAnswer({ action: "keep" })}>Yes, correct</button>
+              <button onClick={() => { setValue(f.text); setEditing(true); }}>Change</button>
+              <button className="ghost" onClick={() => onAnswer({ action: "remove" })}>Remove</button>
+            </div>
+          )}
+        </>
+      );
+    }
     case "hours":
     case "address": {
       const isHours = q.kind === "hours";

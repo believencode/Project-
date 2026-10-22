@@ -142,6 +142,27 @@ describe("AI sheet builder", () => {
     expect(sheet.availability.map((n) => n.text)).toEqual(["Белые кроссовки: размеры 40–43"]);
     expect(sheet.tone_examples).toEqual(["Доставка по Бишкеку 200 сом, привезём завтра."]);
   });
+
+  it("keeps other facts and item details the chats back up; a fee stays a fact, not a price", async () => {
+    queue.push({
+      hours: "",
+      address: "",
+      prices: [
+        { item: "Чёрные лоферы", amount: 5200, details: "Натуральная кожа" },
+        { item: "Доставка по Бишкеку", amount: 200, details: "" },
+      ],
+      availability: [],
+      facts: [
+        { topic: "Доставка", text: "Доставка по Бишкеку — 200 сом, привозим на следующий день." },
+        { topic: "Обмен", text: "Обмен в течение 30 дней." }, // staff said 14
+      ],
+      top_questions: [],
+      tone_examples: [],
+    });
+    const sheet = await buildSheetWithAI(shoeChats(NOW), "shop", "Обувь 10");
+    expect(sheet.prices.map((p) => [p.item, p.details])).toEqual([["Чёрные лоферы", "Натуральная кожа"]]);
+    expect(sheet.facts?.map((f) => [f.topic, f.needs_check])).toEqual([["Доставка", true]]);
+  });
 });
 
 describe("change request via AI", () => {

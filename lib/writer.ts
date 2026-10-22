@@ -50,7 +50,7 @@ function instruction(intent: BotIntent, sheet: Sheet): string {
 const WRITER_SYSTEM = `You write one WhatsApp message on behalf of a small business in Bishkek.
 Say exactly what the instruction asks — nothing more. Never add prices, sizes, times, addresses, discounts or promises that aren't in the instruction.
 At most 2 short sentences. Sound like the staff examples: friendly, natural, no bureaucratic phrasing. No emoji unless the staff examples use them.
-Write in the language given in <language>.`;
+Write in the language given in <language>, in Cyrillic letters only. Greet only if the conversation has no bot message yet.`;
 
 async function writeOne(intent: BotIntent, sheet: Sheet, chat: Chat, customerTexts: string[], hint?: string): Promise<string> {
   const history = historyOf(chat, 6)
