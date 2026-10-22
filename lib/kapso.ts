@@ -1,0 +1,91 @@
+/**
+ * Server only. Everything that talks to Kapso lives here, so switching to
+ * Meta's API or another provider later means replacing this one file.
+ * Docs: https://docs.kapso.ai/api/introduction
+ */
+
+const WHATSAPP_API = "https://api.kapso.ai/meta/whatsapp/v24.0";
+const PLATFORM_API = "https://api.kapso.ai/platform/v1";
+
+export interface KapsoMessage {
+  id: string;
+  /** Seconds since epoch, as a string. */
+  timestamp: string;
+  type: string;
+  from?: string;
+  to?: string;
+  text?: { body: string };
+  kapso?: {
+    direction?: "inbound" | "outbound";
+    /** "business_app" when staff replied from the WhatsApp Business app on the phone. */
+    origin?: string;
+    contact_name?: string;
+    phone_number?: string;
+  };
+}
+
+export interface KapsoPhoneNumber {
+  phone_number_id: string;
+  display_name: string | null;
+  kind: string;
+  is_coexistence: boolean;
+}
+
+export class KapsoError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+function apiKey(): string {
+  const key = process.env.KAPSO_API_KEY;
+  if (!key) throw new KapsoError("KAPSO_API_KEY is not set", 0);
+  return key;
+}
+
+async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(url, {
+    ...init,
+    headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(init.headers ?? {}) },
+  });
+  const body = await res.text();
+  if (!res.ok) throw new KapsoError(`Kapso ${res.status}: ${body.slice(0, 300)}`, res.status);
+  return JSON.parse(body) as T;
+}
+
+export async function listPhoneNumbers(): Promise<KapsoPhoneNumber[]> {
+  const { data } = await call<{ data: KapsoPhoneNumber[] }>(`${PLATFORM_API}/whatsapp/phone_numbers`);
+  return data;
+}
+
+/** Messages created on or after `since`, oldest first (follows pagination). */
+export async function listMessages(
+  phoneNumberId: string,
+  opts: { since: Date; direction?: "inbound" | "outbound" },
+): Promise<KapsoMessage[]> {
+  const out: KapsoMessage[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < 10; page++) {
+    const q = new URLSearchParams({ since: opts.since.toISOString(), limit: "100", fields: "kapso(default,origin)" });
+    if (opts.direction) q.set("direction", opts.direction);
+    if (after) q.set("after", after);
+    const res: { data: KapsoMessage[]; paging?: { cursors?: { after?: string | null }; next?: string | null } } = await call(
+      `${WHATSAPP_API}/${phoneNumberId}/messages?${q}`,
+    );
+    out.push(...res.data);
+    after = res.paging?.next ? (res.paging.cursors?.after ?? null) : null;
+    if (!after) break;
+  }
+  return out.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+}
+
+export async function sendText(phoneNumberId: string, to: string, body: string): Promise<string | undefined> {
+  const res = await call<{ messages?: { id: string }[] }>(`${WHATSAPP_API}/${phoneNumberId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body } }),
+  });
+  return res.messages?.[0]?.id;
+}
