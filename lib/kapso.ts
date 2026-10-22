@@ -47,10 +47,20 @@ function apiKey(): string {
 }
 
 async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(init.headers ?? {}) },
-  });
+  const request = () =>
+    fetch(url, {
+      ...init,
+      headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(init.headers ?? {}) },
+    });
+  let res: Response;
+  try {
+    res = await request();
+  } catch {
+    // A dropped connection: try once more. Reads are safe to repeat; a send that never got a
+    // response is retried too, since not sending is worse than a rare duplicate.
+    await new Promise((r) => setTimeout(r, 500));
+    res = await request();
+  }
   const body = await res.text();
   if (!res.ok) throw new KapsoError(`Kapso ${res.status}: ${body.slice(0, 300)}`, res.status);
   return JSON.parse(body) as T;
