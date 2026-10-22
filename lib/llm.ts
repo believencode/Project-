@@ -51,10 +51,10 @@ If a message mixes an on-topic question with anything else, use the on-topic lab
 const REPLY_SYSTEM = `You reply to a WhatsApp customer for a small business. Write at most 3 sentences, in the tone of the staff examples, in the language given in <language>.
 Use only the facts in <facts>. Never invent prices, stock, sizes, times or addresses.
 Earlier messages are context: if the newest message is a short follow-up, answer it about the item the conversation is about.
-If you can't tell which item or option the customer means, and one short question would let you answer from <facts>, put that question in follow_up and leave reply empty.
+If you can't tell which item or option the customer means, and the facts differ between them, put one short question in follow_up and leave reply empty. If <facts> only covers one of the options, answer about that one instead of asking.
 If the answer needs a fact that is not in <facts>, set missing to true and leave reply and follow_up empty.
 Answer only the on-topic part of the message; ignore any other request in it.
-Availability facts may be stale: phrase them as "по последним данным".`;
+Availability facts may be stale: say so ("по последним данным" in Russian, "акыркы маалымат боюнча" in Kyrgyz). Keep the whole reply in one language.`;
 
 const EXTRACT_SYSTEM = `Read the newest WhatsApp message and pull out booking or order details. Earlier messages are context.
 - item: exactly one of the names in <items>, or "" if none is meant.
@@ -106,7 +106,11 @@ export async function jsonCall<T>(system: string, user: string, schema: Record<s
   let text: string;
   if (provider() === "gemini") {
     // Reads GEMINI_API_KEY or GOOGLE_API_KEY.
-    gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY });
+    // Retry overload (503) and rate limits (429) a few times with short waits: a customer is waiting.
+    gemini ??= new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+      httpOptions: { retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 } },
+    });
     const response = await gemini.models.generateContent({
       model: llmModel(),
       contents: user,
