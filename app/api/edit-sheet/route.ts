@@ -4,12 +4,16 @@ import { llmEnabled } from "@/lib/llm";
 import { validateOps } from "@/lib/edits";
 import { opsFromRequest } from "@/lib/editRequest";
 import { DEFAULT_LANG, isLang } from "@/lib/i18n";
+import { currentOwner } from "@/lib/session";
 
 // AI calls can take several seconds.
 export const maxDuration = 60;
 
 /** The owner asks for a change in their own words; the AI proposes edits, code checks them. */
 export async function POST(req: Request) {
+  // Only a logged-in owner may spend AI calls.
+  const owner = await currentOwner();
+  if (owner instanceof NextResponse) return owner;
   const { sheet, request, lang: asked } = (await req.json()) as { sheet: Sheet; request: string; lang?: string };
   const lang = isLang(asked) ? asked : DEFAULT_LANG;
   if (!sheet || typeof request !== "string" || !request.trim()) {
