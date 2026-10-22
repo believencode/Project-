@@ -6,10 +6,12 @@ import { useNow, useStore } from "@/lib/store";
 import { ChatBadges, ChatThread } from "@/components/ChatThread";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
 import type { NeedsPerson } from "@/lib/types";
+import { useT } from "@/lib/i18n/react";
 
 function Inbox() {
   const { business, open, sendCustomer } = useStore();
   const params = useSearchParams();
+  const { t } = useT();
   const now = useNow();
   const [selected, setSelected] = useState<string | null>(params.get("chat"));
   // What the chat was waiting for when staff opened it, so the reason stays visible.
@@ -45,7 +47,7 @@ function Inbox() {
                 <span className="muted small">{last ? new Date(last.at).toLocaleDateString("ru-RU") : ""}</span>
               </div>
               <div className="preview">
-                {last ? `${last.from === "bot" ? "Bot: " : last.from === "staff" ? "Staff: " : ""}${last.kind === "voice" ? "🎤 Voice message" : last.text}` : "No messages"}
+                {last ? `${last.from === "bot" ? t("bot_prefix") : last.from === "staff" ? t("staff_prefix") : ""}${last.kind === "voice" ? t("voice_message") : last.text}` : t("no_messages")}
               </div>
               <div className="badges"><ChatBadges chat={c} now={now} /></div>
             </button>
@@ -62,7 +64,7 @@ function Inbox() {
           </>
         ) : (
           <div className="messages" style={{ alignItems: "center", justifyContent: "center" }}>
-            <div className="sys">Pick a chat</div>
+            <div className="sys">{t("pick_chat")}</div>
           </div>
         )}
       </div>
@@ -72,17 +74,18 @@ function Inbox() {
 
 /** Demo control: send a message as this customer. */
 function SimulateCustomer({ onSend, onVoice }: { onSend: (t: string) => void; onVoice: () => void }) {
-  const [t, setT] = useState("");
+  const [text, setText] = useState("");
+  const { t } = useT();
   const send = () => {
-    if (!t.trim()) return;
-    onSend(t.trim());
-    setT("");
+    if (!text.trim()) return;
+    onSend(text.trim());
+    setText("");
   };
   return (
     <div className="composer" style={{ borderTop: "1px dashed var(--line)" }}>
-      <input type="text" value={t} placeholder="Demo: message from this customer" onChange={(e) => setT(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
-      <button onClick={send} disabled={!t.trim()}>As customer</button>
-      <button onClick={onVoice} title="Send a voice note as this customer">🎤</button>
+      <input type="text" value={text} placeholder={t("demo_customer_ph")} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
+      <button onClick={send} disabled={!text.trim()}>{t("as_customer")}</button>
+      <button onClick={onVoice} title={t("voice_title")}>🎤</button>
     </div>
   );
 }

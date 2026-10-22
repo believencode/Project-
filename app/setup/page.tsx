@@ -6,6 +6,8 @@ import type { BackupAnswers, Business, BusinessType, Sheet, Topic } from "@/lib/
 import { demoBusiness, useStore } from "@/lib/store";
 import { testChat } from "@/lib/fixtures";
 import { ALLOWED_TOPICS, AVAILABILITY_EXAMPLE, BUSINESS_TYPES, EMPTY_STATE_EXAMPLE } from "@/lib/copy";
+import { useT } from "@/lib/i18n/react";
+import type { Key } from "@/lib/i18n";
 import { ReviewSheet } from "@/components/ReviewSheet";
 import { Clarify } from "@/components/Clarify";
 import { SheetSummary } from "@/components/SheetSummary";
@@ -14,26 +16,9 @@ import { applyAnswers, buildQuestions, type Answer, type Question } from "@/lib/
 
 type Step = "name" | "type" | "connect" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
 
-const ASK_OPTIONS: { id: Topic; label: string }[] = [
-  { id: "price", label: "Prices" },
-  { id: "hours", label: "Hours" },
-  { id: "booking", label: "Booking" },
-  { id: "availability", label: "Availability" },
-  { id: "address", label: "Address" },
-];
-
-const GOALS: { id: BackupAnswers["goal"]; label: string }[] = [
-  { id: "answer", label: "Answer questions" },
-  { id: "orders", label: "Take orders" },
-  { id: "booking", label: "Book a time" },
-  { id: "phone", label: "Collect a phone number" },
-];
-
-const LANGS: { id: BackupAnswers["language"]; label: string }[] = [
-  { id: "ru", label: "Russian" },
-  { id: "ky", label: "Kyrgyz" },
-  { id: "both", label: "Both" },
-];
+const ASK_OPTIONS: Topic[] = ["price", "hours", "booking", "availability", "address"];
+const GOALS: BackupAnswers["goal"][] = ["answer", "orders", "booking", "phone"];
+const LANGS: BackupAnswers["language"][] = ["ru", "ky", "both"];
 
 const TOPIC_RU: Record<Topic, string> = {
   price: "Цена",
@@ -72,7 +57,7 @@ function FakeQR() {
     return out;
   }, []);
   return (
-    <div className="qr" aria-label="QR code (mock)">
+    <div className="qr" aria-label="QR">
       {cells.map((b, i) => <i key={i} className={b ? "b" : ""} />)}
     </div>
   );
@@ -81,6 +66,8 @@ function FakeQR() {
 export default function SetupPage() {
   const router = useRouter();
   const { business, setBusiness, goLive, updateSheet } = useStore();
+  const { t, tError } = useT();
+  const tr = (key: Key) => t(key);
   const [history, setHistory] = useState<Step[]>(["name"]);
   const step = history[history.length - 1];
   const [name, setName] = useState("");
@@ -117,7 +104,7 @@ export default function SetupPage() {
       } catch (err) {
         if (!(err instanceof TypeError)) {
           // The AI is configured but failed: say so instead of showing demo facts as if the AI read them.
-          if (!cancelled) setReadError(err instanceof Error ? err.message : "The AI could not read the chats.");
+          if (!cancelled) setReadError(err instanceof Error ? tError(err.message) : t("read_failed"));
           return;
         }
         // No server at all (static demo): keep the demo facts.
@@ -181,12 +168,12 @@ export default function SetupPage() {
   const pct = Math.round(((order.indexOf(step === "reading" ? "clarify" : step === "review" ? "summary" : step) + 1) / order.length) * 100);
   const factsEmpty = !facts.hours.trim() && !facts.address.trim() && !facts.availability.trim() && facts.prices.every((p) => !p.item.trim());
 
-  const Back = () => (history.length > 1 && step !== "reading" ? <button className="ghost" onClick={back}>← Back</button> : <span />);
+  const Back = () => (history.length > 1 && step !== "reading" ? <button className="ghost" onClick={back}>{t("back")}</button> : <span />);
 
   if (step === "clarify" && clarifyBase) {
     return (
       <main className="page narrow">
-        <div className="steps">A few questions to get the facts right</div>
+        <div className="steps">{t("setup_clarify_steps")}</div>
         <Clarify
           sheet={clarifyBase}
           questions={questions}
@@ -241,57 +228,55 @@ export default function SetupPage() {
 
   return (
     <main className="page narrow">
-      <div className="steps">Set up your WhatsApp bot</div>
+      <div className="steps">{t("setup_steps")}</div>
       <div className="progress"><div style={{ width: `${pct}%` }} /></div>
 
       <div className="card stack">
         {step === "name" && (
           <>
-            <h1>What is your business called?</h1>
+            <h1>{t("name_q")}</h1>
             <input type="text" autoFocus value={name} placeholder="Обувь 10" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && go("type")} />
-            <div className="row between"><Back /><button className="primary" disabled={!name.trim()} onClick={() => go("type")}>Next</button></div>
+            <div className="row between"><Back /><button className="primary" disabled={!name.trim()} onClick={() => go("type")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "type" && (
           <>
-            <h1>What kind of business is it?</h1>
+            <h1>{t("type_q")}</h1>
             <div className="choices">
               {BUSINESS_TYPES.map((t) => (
-                <button key={t.id} className={`choice ${type === t.id ? "on" : ""}`} onClick={() => setType(t.id)}>{t.label}</button>
+                <button key={t.id} className={`choice ${type === t.id ? "on" : ""}`} onClick={() => setType(t.id)}>{tr(`type_${t.id}`)}</button>
               ))}
             </div>
-            {type ? <p className="muted small">Customers might ask: {EMPTY_STATE_EXAMPLE[type]}</p> : null}
-            <div className="row between"><Back /><button className="primary" disabled={!type} onClick={() => go("connect")}>Next</button></div>
+            {type ? <p className="muted small">{t("customers_might_ask", { example: EMPTY_STATE_EXAMPLE[type] })}</p> : null}
+            <div className="row between"><Back /><button className="primary" disabled={!type} onClick={() => go("connect")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "connect" && (
           <>
-            <h1>Connect WhatsApp</h1>
-            <p>Open WhatsApp Business on your phone → Linked devices → scan this code.</p>
+            <h1>{t("connect_title")}</h1>
+            <p>{t("connect_body")}</p>
             <FakeQR />
-            <p className="muted small" style={{ textAlign: "center" }}>
-              Your number stays on the WhatsApp Business app. Staff keep replying from the phone as usual.
-            </p>
-            <div className="row between"><Back /><button className="primary" onClick={() => go("share")}>I scanned it</button></div>
+            <p className="muted small" style={{ textAlign: "center" }}>{t("connect_note")}</p>
+            <div className="row between"><Back /><button className="primary" onClick={() => go("share")}>{t("scanned")}</button></div>
           </>
         )}
 
         {step === "share" && (
           <>
-            <h1>Share your old chats?</h1>
-            <p>We read up to 6 months of one-to-one chats to learn your prices, hours, and how your staff reply.</p>
+            <h1>{t("share_q")}</h1>
+            <p>{t("share_body")}</p>
             <div className="notice">
-              Chats are used only to answer this business. They are not used to train a public model. You can delete them.
+              {t("share_privacy")}
               <br />
-              <span className="small muted">Group chats are not included.</span>
+              <span className="small muted">{t("share_groups")}</span>
             </div>
             <div className="row between">
               <Back />
               <div className="row">
-                <button onClick={() => go("asks")}>Skip</button>
-                <button className="primary" onClick={() => go("reading")}>Share 6 months</button>
+                <button onClick={() => go("asks")}>{t("skip")}</button>
+                <button className="primary" onClick={() => go("reading")}>{t("share_btn")}</button>
               </div>
             </div>
           </>
@@ -299,94 +284,94 @@ export default function SetupPage() {
 
         {step === "reading" && (
           <div style={{ textAlign: "center" }}>
-            <h1>Reading chats</h1>
+            <h1>{t("reading_title")}</h1>
             {readError ? (
               <>
                 <div className="notice warn">{readError}</div>
                 <div className="row" style={{ justifyContent: "center" }}>
-                  <button onClick={() => setHistory((h) => [...h.slice(0, -1), "asks"])}>Skip and answer questions</button>
-                  <button className="primary" onClick={() => setReadTry((n) => n + 1)}>Try again</button>
+                  <button onClick={() => setHistory((h) => [...h.slice(0, -1), "asks"])}>{t("reading_skip")}</button>
+                  <button className="primary" onClick={() => setReadTry((n) => n + 1)}>{t("try_again")}</button>
                 </div>
               </>
             ) : (
               <div className="spinner" />
             )}
-            <p className="muted">The AI is reading one-to-one chats from the last 6 months to learn your prices, hours and how your staff reply. Group chats are skipped.</p>
+            <p className="muted">{t("reading_body")}</p>
             {type !== "cafe" && type !== "shop" ? (
-              <p className="small muted">Prototype: this uses the demo shoe shop chats.</p>
+              <p className="small muted">{t("reading_demo")}</p>
             ) : null}
           </div>
         )}
 
         {step === "asks" && (
           <>
-            <h1>What do customers ask about?</h1>
-            <p className="muted">Pick all that apply.</p>
+            <h1>{t("asks_q")}</h1>
+            <p className="muted">{t("pick_all")}</p>
             <div className="choices">
               {ASK_OPTIONS.map((o) => (
-                <button key={o.id} className={`choice ${asks.includes(o.id) ? "on" : ""}`} onClick={() => setAsks((a) => (a.includes(o.id) ? a.filter((x) => x !== o.id) : [...a, o.id]))}>
-                  {asks.includes(o.id) ? "✓ " : ""}{o.label}
+                <button key={o} className={`choice ${asks.includes(o) ? "on" : ""}`} onClick={() => setAsks((a) => (a.includes(o) ? a.filter((x) => x !== o) : [...a, o]))}>
+                  {asks.includes(o) ? "✓ " : ""}{t(`topic_${o}`)}
                 </button>
               ))}
             </div>
-            <div className="row between"><Back /><button className="primary" disabled={asks.length === 0} onClick={() => go("goal")}>Next</button></div>
+            <div className="row between"><Back /><button className="primary" disabled={asks.length === 0} onClick={() => go("goal")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "goal" && (
           <>
-            <h1>What should the bot do?</h1>
+            <h1>{t("goal_q")}</h1>
             <div className="choices">
               {GOALS.map((g) => (
-                <button key={g.id} className={`choice ${goal === g.id ? "on" : ""}`} onClick={() => setGoal(g.id)}>{g.label}</button>
+                <button key={g} className={`choice ${goal === g ? "on" : ""}`} onClick={() => setGoal(g)}>{t(`goal_${g}`)}</button>
               ))}
             </div>
-            <div className="row between"><Back /><button className="primary" disabled={!goal} onClick={() => go("facts")}>Next</button></div>
+            <div className="row between"><Back /><button className="primary" disabled={!goal} onClick={() => go("facts")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "facts" && (
           <>
-            <h1>Basic facts</h1>
-            <p className="muted">The bot answers only from these. Every field is optional.</p>
-            <label className="field"><span>Hours</span><input type="text" value={facts.hours} placeholder="09:00–22:00" onChange={(e) => setFacts({ ...facts, hours: e.target.value })} /></label>
-            <label className="field"><span>Address</span><input type="text" value={facts.address} placeholder="Бишкек, ул. Киевская 100" onChange={(e) => setFacts({ ...facts, address: e.target.value })} /></label>
+            <h1>{t("facts_title")}</h1>
+            <p className="muted">{t("facts_body")}</p>
+            <label className="field"><span>{t("hours")}</span><input type="text" value={facts.hours} placeholder="09:00–22:00" onChange={(e) => setFacts({ ...facts, hours: e.target.value })} /></label>
+            <label className="field"><span>{t("address")}</span><input type="text" value={facts.address} placeholder="Бишкек, ул. Киевская 100" onChange={(e) => setFacts({ ...facts, address: e.target.value })} /></label>
             <div>
-              <span className="muted small">Up to 5 prices</span>
+              <span className="muted small">{t("up_to_5")}</span>
               {facts.prices.map((p, i) => (
                 <div key={i} className="row" style={{ flexWrap: "nowrap", marginTop: 6 }}>
-                  <input type="text" value={p.item} placeholder={i === 0 ? (type === "cafe" ? "Лагман" : "Товар или услуга") : ""} aria-label={`Item ${i + 1}`}
+                  <input type="text" value={p.item} placeholder={i === 0 ? (type === "cafe" ? "Лагман" : t("item_ph")) : ""} aria-label={t("item_n", { n: i + 1 })}
                     onChange={(e) => setFacts({ ...facts, prices: facts.prices.map((x, j) => (j === i ? { ...x, item: e.target.value } : x)) })} />
-                  <input type="number" value={p.amount} placeholder="сом" style={{ maxWidth: 110 }} aria-label={`Price ${i + 1}`}
+                  <input type="number" value={p.amount} placeholder="сом" style={{ maxWidth: 110 }} aria-label={t("price_n", { n: i + 1 })}
                     onChange={(e) => setFacts({ ...facts, prices: facts.prices.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)) })} />
                 </div>
               ))}
             </div>
-            <label className="field"><span>Availability note</span><input type="text" value={facts.availability} placeholder={AVAILABILITY_EXAMPLE[type ?? "other"]} onChange={(e) => setFacts({ ...facts, availability: e.target.value })} /></label>
-            {factsEmpty ? <div className="notice warn small">With no facts, the bot can only pass every question to a person.</div> : null}
-            <div className="row between"><Back /><button className="primary" onClick={() => go("language")}>Next</button></div>
+            <label className="field"><span>{t("avail_note")}</span><input type="text" value={facts.availability} placeholder={AVAILABILITY_EXAMPLE[type ?? "other"]} onChange={(e) => setFacts({ ...facts, availability: e.target.value })} /></label>
+            {factsEmpty ? <div className="notice warn small">{t("no_facts_warn")}</div> : null}
+            <div className="row between"><Back /><button className="primary" onClick={() => go("language")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "language" && (
           <>
-            <h1>Which language should the bot use?</h1>
+            <h1>{t("language_q")}</h1>
             <div className="choices">
               {LANGS.map((l) => (
-                <button key={l.id} className={`choice ${language === l.id ? "on" : ""}`} onClick={() => setLanguage(l.id)}>{l.label}</button>
+                <button key={l} className={`choice ${language === l ? "on" : ""}`} onClick={() => setLanguage(l)}>{t(`lang_${l}`)}</button>
               ))}
             </div>
-            {language === "both" ? <p className="muted small">The bot replies in the customer&apos;s language: Kyrgyz if they write in Kyrgyz, otherwise Russian.</p> : null}
-            <div className="row between"><Back /><button className="primary" disabled={!language} onClick={() => go("notes")}>Next</button></div>
+            {language === "both" ? <p className="muted small">{t("both_note")}</p> : null}
+            <div className="row between"><Back /><button className="primary" disabled={!language} onClick={() => go("notes")}>{t("next")}</button></div>
           </>
         )}
 
         {step === "notes" && (
           <>
-            <h1>Anything else the bot should know?</h1>
-            <p className="muted">Optional.</p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Например: доставка только по Бишкеку" />
-            <div className="row between"><Back /><button className="primary" onClick={buildFromBackup}>Review</button></div>
+            <h1>{t("notes_q")}</h1>
+            <p className="muted">{t("optional")}</p>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("notes_ph")} />
+            <div className="row between"><Back /><button className="primary" onClick={buildFromBackup}>{t("review_btn")}</button></div>
           </>
         )}
       </div>

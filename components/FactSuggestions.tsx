@@ -4,20 +4,20 @@ import { useState } from "react";
 import type { Chat, FactSuggestion } from "@/lib/types";
 import { pendingSuggestions } from "@/lib/knowledge";
 import { useStore } from "@/lib/store";
+import { useT } from "@/lib/i18n/react";
 
 /** Answers staff gave to questions the bot couldn't answer, offered as facts for the knowledge base. */
 export function FactSuggestions() {
   const { business } = useStore();
+  const { t } = useT();
   if (!business) return null;
   const pending = pendingSuggestions(business.chats);
   if (pending.length === 0) return null;
   return (
     <div className="card stack">
       <div>
-        <h2>Learned from your staff</h2>
-        <p className="muted small">
-          The bot couldn&apos;t answer these questions, and your staff did. Add an answer and the bot will give it next time.
-        </p>
+        <h2>{t("learned_title")}</h2>
+        <p className="muted small">{t("learned_hint")}</p>
       </div>
       {pending.map(({ chat, s }) => (
         <SuggestionCard key={`${chat.id}:${s.id}`} chat={chat} s={s} />
@@ -28,6 +28,7 @@ export function FactSuggestions() {
 
 function SuggestionCard({ chat, s }: { chat: Chat; s: FactSuggestion }) {
   const { settleSuggestion } = useStore();
+  const { t } = useT();
   const [topic, setTopic] = useState(s.topic);
   const [text, setText] = useState(s.text);
   const [busy, setBusy] = useState(false);
@@ -39,24 +40,24 @@ function SuggestionCard({ chat, s }: { chat: Chat; s: FactSuggestion }) {
   return (
     <div className="fact stack">
       <div className="small">
-        <span className="muted">{chat.customer} asked:</span> «{s.question}»
+        <span className="muted">{t("asked", { name: chat.customer })}</span> «{s.question}»
       </div>
       <div className="small">
-        <span className="muted">Staff answered:</span> «{s.answer}»
+        <span className="muted">{t("staff_answered")}</span> «{s.answer}»
       </div>
       <label className="field">
-        <span>Topic</span>
+        <span>{t("topic")}</span>
         <input type="text" value={topic} placeholder="Доставка" onChange={(e) => setTopic(e.target.value)} />
       </label>
       <label className="field">
-        <span>What the bot will know</span>
+        <span>{t("what_bot_knows")}</span>
         <textarea value={text} onChange={(e) => setText(e.target.value)} />
       </label>
       <div className="row">
         <button className="primary" disabled={busy || !topic.trim() || !text.trim()} onClick={() => settle(true)}>
-          Add to knowledge
+          {t("add_to_knowledge")}
         </button>
-        <button className="ghost" disabled={busy} onClick={() => settle(false)}>Not useful</button>
+        <button className="ghost" disabled={busy} onClick={() => settle(false)}>{t("not_useful")}</button>
       </div>
     </div>
   );

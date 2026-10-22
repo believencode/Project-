@@ -138,7 +138,7 @@ export function receiveClassified(
       next.needs_person = { reason: "Off-topic", details: lastOffTopic(messages) };
     } else if (next.off_topic_count >= 2) {
       bot(HANDOFF_LINE, { type: "handoff" });
-      messages.push(msg("system", "Handed to a person: off-topic twice. AI stopped on this chat.", now + 2));
+      messages.push(msg("system", "Handed to a person: off-topic twice. AI stopped on this chat.", now + 2, { note: { code: "handoff_off_topic" } }));
       next.ai_stopped = true;
       next.needs_person = { reason: "Off-topic", details: lastOffTopic(messages) };
     } else {
@@ -197,7 +197,7 @@ export function settleRequest(chat: Chat, requestId: string, ok: boolean, now: n
         intent: { type: ok ? "confirmed" : "declined", kind: req.kind, summary: req.summary },
         written_by: "template",
       }),
-      msg("system", `Staff ${ok ? "confirmed" : "declined"}: ${req.summary}`, now + 1),
+      msg("system", `Staff ${ok ? "confirmed" : "declined"}: ${req.summary}`, now + 1, { note: { code: "settled", ok, summary: req.summary } }),
     ],
   };
 }
@@ -209,6 +209,7 @@ export function staffReply(chat: Chat, text: string, now: number, source: "inbox
     "system",
     source === "echo" ? "Reply sent from the WhatsApp Business app. Bot paused for 30 min." : "Bot paused for 30 min.",
     now + 1,
+    { note: { code: "paused", echo: source === "echo" } },
   );
   return {
     ...chat,
@@ -222,7 +223,7 @@ export function resumeBot(chat: Chat, now: number): Chat {
   return {
     ...chat,
     paused_until: null,
-    messages: [...chat.messages, msg("system", "Bot resumed by the owner.", now)],
+    messages: [...chat.messages, msg("system", "Bot resumed by the owner.", now, { note: { code: "resumed" } })],
   };
 }
 
@@ -233,7 +234,7 @@ export function skipThirtyMinutes(chat: Chat, now: number): Chat {
   return {
     ...chat,
     paused_until: until > now ? until : null,
-    messages: until > now ? chat.messages : [...chat.messages, msg("system", "Pause ended. Bot answers the next message.", now)],
+    messages: until > now ? chat.messages : [...chat.messages, msg("system", "Pause ended. Bot answers the next message.", now, { note: { code: "pause_ended" } })],
   };
 }
 

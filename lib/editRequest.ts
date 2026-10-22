@@ -1,6 +1,7 @@
 import type { Sheet } from "./types";
 import type { EditOp } from "./edits";
 import { jsonCall } from "./llm";
+import type { Lang } from "./i18n";
 
 /** Server only. Turn the owner's change request into edit operations. */
 
@@ -18,9 +19,11 @@ Operations:
 Delivery, payment and other policies are facts (set_fact) even when they cost money, unless <current_facts> lists them as prices.
 Use item names and topics from <current_facts> when the owner means an existing item. Only include what the owner asked for.
 For fields an operation doesn't use, give "" or 0.
-If part of the request isn't about these facts or isn't clear, put it in unclear, in Russian, as a short question back to the owner.`;
+If part of the request isn't about these facts or isn't clear, put it in unclear, in the language given in <owner_language>, as a short question back to the owner.`;
 
-export async function opsFromRequest(sheet: Sheet, request: string): Promise<{ ops: EditOp[]; unclear: string }> {
+const OWNER_LANGUAGE: Record<Lang, string> = { ru: "Russian", ky: "Kyrgyz", en: "English" };
+
+export async function opsFromRequest(sheet: Sheet, request: string, lang: Lang = "ru"): Promise<{ ops: EditOp[]; unclear: string }> {
   const facts = {
     hours: sheet.hours,
     address: sheet.address,
@@ -31,7 +34,7 @@ export async function opsFromRequest(sheet: Sheet, request: string): Promise<{ o
   };
   const out = await jsonCall<{ ops: { op: EditOp["op"]; item: string; topic: string; amount: number; text: string }[]; unclear: string }>(
     SYSTEM,
-    `<current_facts>${JSON.stringify(facts)}</current_facts>\n<owner_request>${request}</owner_request>`,
+    `<current_facts>${JSON.stringify(facts)}</current_facts>\n<owner_language>${OWNER_LANGUAGE[lang]}</owner_language>\n<owner_request>${request}</owner_request>`,
     {
       type: "object",
       properties: {
