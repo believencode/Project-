@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "./db";
-import { llmEnabled, llmModel } from "./llm";
+import { llmEnabled } from "./llm";
 import { kapsoEnabled } from "./kapso";
 
 /**
@@ -23,7 +23,7 @@ export async function health() {
   }
   return {
     database,
-    ai: llmEnabled() ? `${process.env.LLM_PROVIDER} · ${llmModel()}` : "off: set LLM_PROVIDER",
+    ai: llmEnabled() ? "on" : "off: set LLM_PROVIDER",
     ai_key: process.env.APP_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? "set" : "missing",
     whatsapp: kapsoEnabled() ? "on" : "off: set KAPSO_API_KEY",
   };

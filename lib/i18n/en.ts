@@ -288,8 +288,8 @@ export const en = {
 
   // Live
   live_title: "Assistant is answering",
-  ai_badge: "AI writes every reply · {model}",
-  demo_badge: "Demo mode: keyword rules and fixed lines — set LLM_PROVIDER to turn on AI",
+  ai_badge: "AI writes every reply",
+  demo_badge: "Demo mode: AI is off, replies are fixed lines",
   live_stats: "{name} · {on} of {total} chats on the assistant · {need} need a person",
   open_inbox: "Open inbox →",
   test_box: "Test box",

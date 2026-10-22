@@ -176,8 +176,8 @@ function check(step: Step, before: Chat, out: Turn): string[] {
   return fails;
 }
 
-const mode = (await (await fetch(`${BASE}/api/mode`)).json()) as { ai: boolean; model: string | null };
-console.log(`Model: ${mode.ai ? mode.model : "none (demo mode — set LLM_PROVIDER)"}\n`);
+const probe = await turn(testChat(), "Здравствуйте");
+console.log(`Model: ${probe.decision?.model ?? "none (demo mode — set LLM_PROVIDER)"}\n`);
 
 // ONLY=regex runs a subset, e.g. ONLY="ky|price".
 const only = process.env.ONLY ? new RegExp(process.env.ONLY, "i") : null;
