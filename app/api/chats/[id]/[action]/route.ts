@@ -10,6 +10,9 @@ import { testChat } from "@/lib/fixtures";
 import { withLock } from "@/lib/locks";
 import { deliverNew } from "@/lib/whatsapp/outbound";
 
+// AI calls can take several seconds.
+export const maxDuration = 60;
+
 const ACTIONS = ["customer", "staff", "settle", "resume", "skip30", "open", "reset"] as const;
 type Action = (typeof ACTIONS)[number];
 

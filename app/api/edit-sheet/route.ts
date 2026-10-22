@@ -4,6 +4,9 @@ import { llmEnabled } from "@/lib/llm";
 import { validateOps } from "@/lib/edits";
 import { opsFromRequest } from "@/lib/editRequest";
 
+// AI calls can take several seconds.
+export const maxDuration = 60;
+
 /** The owner asks for a change in their own words; the AI proposes edits, code checks them. */
 export async function POST(req: Request) {
   const { sheet, request } = (await req.json()) as { sheet: Sheet; request: string };

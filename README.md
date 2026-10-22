@@ -29,6 +29,20 @@ Everything is saved in Postgres. Without `DATABASE_URL` the app uses PGlite, Pos
 process and stored in `./data/pg`, so there is nothing to install. Owners sign up with email and password; each owner
 has one business and sees only their own data. **Settings → Reset prototype** deletes the business.
 
+## Online: Vercel + Neon
+
+1. **Neon** (neon.tech): create a project in **AWS Europe Central 1 (Frankfurt)** and copy the connection string.
+2. **Vercel** (vercel.com): import this GitHub repository. Functions run in Frankfurt too (`vercel.json`).
+3. In Vercel → Project → Settings → Environment Variables, add:
+   `DATABASE_URL` (from Neon), `LLM_PROVIDER=anthropic`, `LLM_MODEL=claude-haiku-5-5`, `ANTHROPIC_API_KEY`,
+   `KAPSO_API_KEY`. Then redeploy.
+4. Open the site, create an account, set up the business, then **Settings → WhatsApp → Connect**. Online, this
+   registers a Kapso webhook to `/api/kapso/webhook`; Kapso then pushes each message, signed, and the app answers
+   within 10 seconds and replies in the background. Polling is only for local development.
+
+The tables are created on first use. On Vercel the app refuses to start without `DATABASE_URL`, because serverless
+functions have no lasting disk.
+
 ## Keys
 
 Never paste API keys into a chat, an issue, or the code. In a Claude Code cloud environment:

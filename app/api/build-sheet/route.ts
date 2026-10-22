@@ -3,6 +3,9 @@ import type { BusinessType, Chat } from "@/lib/types";
 import { llmEnabled } from "@/lib/llm";
 import { buildSheetWithAI } from "@/lib/sheetBuilder";
 
+// AI calls can take several seconds.
+export const maxDuration = 60;
+
 /** The AI reads the imported chats and drafts the knowledge sheet. */
 export async function POST(req: Request) {
   const { chats, type, name } = (await req.json()) as { chats: Chat[]; type: BusinessType; name: string };

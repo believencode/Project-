@@ -1,94 +1,24 @@
-import type { Chat } from "../types";
 import { getDb, type Db } from "../db";
-import {
-  businessesOnWhatsApp,
-  getBusinessRowById,
-  loadChat,
-  saveChat,
-  seenWaMessage,
-  setWaSince,
-  type BusinessRow,
-} from "../repo";
-import { receiveUnclassified, staffReply } from "../engine";
-import { runTurn } from "../turn";
-import { withLock } from "../locks";
-import { KapsoError, kapsoEnabled, listMessages, type KapsoMessage } from "../kapso";
-import { deliverNew } from "./outbound";
+import { businessesOnWhatsApp, getBusinessRowById, setWaSince, type BusinessRow } from "../repo";
+import { KapsoError, kapsoEnabled, listMessages } from "../kapso";
+import { handleInbound, handleStaffEcho, isLive } from "./inbound";
 
 /**
- * Server only. Every few seconds, asks Kapso for new WhatsApp messages for each
- * connected business, answers through the bot, and saves everything to the
- * database the web app reads. Staff replies from the WhatsApp Business app
- * pause the bot. Production will receive Kapso webhooks instead of polling.
+ * Server only, local development. Every few seconds, asks Kapso for new WhatsApp
+ * messages for each connected business that has no webhook. Online, Kapso
+ * sends messages to /api/kapso/webhook instead.
  */
 
 const POLL_MS = 3000;
-const KIND: Record<string, Chat["messages"][number]["kind"]> = { audio: "voice", voice: "voice", image: "photo", sticker: "photo" };
-
-function newWhatsAppChat(waId: string, name?: string): Chat {
-  return {
-    id: `wa:${waId}`,
-    customer: name || `+${waId}`,
-    phone: `+${waId}`,
-    messages: [],
-    off_topic_count: 0,
-    ai_stopped: false,
-    paused_until: null,
-    needs_person: null,
-    is_whatsapp: true,
-  };
-}
-
-async function handleInbound(db: Db, row: BusinessRow, m: KapsoMessage) {
-  const waId = m.from!;
-  const chatId = `wa:${waId}`;
-  await withLock(`${row.id}:${chatId}`, async () => {
-    if (await seenWaMessage(db, m.id)) return;
-    const before = (await loadChat(db, row.id, chatId)) ?? newWhatsAppChat(waId, m.kapso?.contact_name);
-    const text = m.text?.body ?? "";
-    const kind = m.type === "text" ? "text" : (KIND[m.type] ?? "photo");
-    const at = Math.max(Number(m.timestamp) * 1000, Date.now());
-    // Not live yet: keep the message for staff, don't answer.
-    const after = row.data.live ? (await runTurn(before, row.data.sheet, text, kind, at)).chat : receiveUnclassified(before, text, kind, at);
-    const customerMsg = after.messages.slice(before.messages.length).find((x) => x.from === "customer");
-    const delivered = await deliverNew(db, row, before, after);
-    const label = after.messages.find((x) => x.id === customerMsg?.id)?.label ?? (row.data.live ? "not classified" : "not live");
-    console.log(`WhatsApp ← ${before.phone} «${kind === "text" ? text : `[${m.type}]`}» [${label}]`);
-    for (const x of delivered.chat.messages.slice(before.messages.length).filter((x) => x.from === "bot")) {
-      console.log(`WhatsApp → ${before.phone} «${x.text}»${x.delivery === "failed" ? " (NOT DELIVERED)" : ""}`);
-    }
-    if (delivered.chat.needs_person && !before.needs_person) console.log(`WhatsApp ! ${before.phone} needs a person: ${delivered.chat.needs_person.reason}`);
-    await saveChat(db, row.id, delivered.chat, {
-      waId,
-      waIds: { ...delivered.waIds, ...(customerMsg ? { [customerMsg.id]: m.id } : {}) },
-    });
-  });
-}
-
-async function handleStaffEcho(db: Db, row: BusinessRow, m: KapsoMessage) {
-  const waId = m.to!;
-  const chatId = `wa:${waId}`;
-  await withLock(`${row.id}:${chatId}`, async () => {
-    if (await seenWaMessage(db, m.id)) return;
-    const before = (await loadChat(db, row.id, chatId)) ?? newWhatsAppChat(waId);
-    const after = staffReply(before, m.text?.body ?? "", Number(m.timestamp) * 1000, "echo");
-    await saveChat(db, row.id, after, { waId, waIds: { [after.messages[after.messages.length - 2].id]: m.id } });
-    console.log(`WhatsApp ⏸ staff replied to ${before.phone} from the phone — bot paused 30 min in that chat`);
-  });
-}
-
 async function pollBusiness(db: Db, row: BusinessRow) {
   const phone = row.kapso_phone_number_id!;
   const since = new Date(row.wa_since ?? row.wa_connected_at ?? Date.now());
-  const connectedAt = Date.parse(row.wa_connected_at ?? new Date().toISOString());
   const [inbound, outbound] = await Promise.all([
     listMessages(phone, { since, direction: "inbound" }),
     listMessages(phone, { since, direction: "outbound" }),
   ]);
-  // Never answer imported history or anything older than the connection.
-  const live = (m: KapsoMessage) => m.kapso?.origin !== "history_sync" && Number(m.timestamp) * 1000 >= connectedAt - 5_000;
   const fresh = [...inbound, ...outbound.filter((m) => m.kapso?.origin === "business_app")]
-    .filter(live)
+    .filter((m) => isLive(row, m))
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
   for (const m of fresh) {
     try {
@@ -105,7 +35,8 @@ async function pollBusiness(db: Db, row: BusinessRow) {
 
 async function pollAll() {
   const db = await getDb();
-  for (const r of await businessesOnWhatsApp(db)) {
+  // Businesses with a webhook get their messages pushed by Kapso.
+  for (const r of (await businessesOnWhatsApp(db)).filter((b) => !b.kapso_webhook_id)) {
     // Re-read so sheet changes made in the web app apply immediately.
     const row = await getBusinessRowById(db, r.id);
     if (!row?.kapso_phone_number_id) continue;
@@ -120,7 +51,8 @@ async function pollAll() {
 const g = globalThis as unknown as { __waPoller?: boolean };
 
 export function startWhatsAppPoller() {
-  if (g.__waPoller || !kapsoEnabled() || process.env.KAPSO_POLL === "0") return;
+  // Serverless hosting (Vercel) can't run a background loop; it uses webhooks only.
+  if (g.__waPoller || !kapsoEnabled() || process.env.VERCEL || process.env.KAPSO_POLL === "0") return;
   g.__waPoller = true;
   console.log("WhatsApp: checking Kapso for new messages every 3s");
   const tick = async () => {

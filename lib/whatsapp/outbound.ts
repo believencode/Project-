@@ -14,10 +14,12 @@ export async function deliverNew(
   row: BusinessRow,
   before: Chat,
   after: Chat,
+  /** The customer's WhatsApp number when the chat may not be saved yet (a new customer). */
+  waId?: string,
 ): Promise<{ chat: Chat; waIds: Record<string, string> }> {
   const waIds: Record<string, string> = {};
   if (!row.kapso_phone_number_id) return { chat: after, waIds };
-  const to = await chatWaId(db, row.id, after.id);
+  const to = waId ?? (await chatWaId(db, row.id, after.id));
   if (!to) return { chat: after, waIds };
 
   const known = new Set(before.messages.map((m) => m.id));

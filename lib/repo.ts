@@ -16,6 +16,9 @@ export interface BusinessRow {
   kapso_phone_number_id: string | null;
   wa_connected_at: string | null;
   wa_since: string | null;
+  /** Online: the Kapso webhook that pushes this number's messages, and its signing secret. */
+  kapso_webhook_id: string | null;
+  kapso_webhook_secret: string | null;
 }
 
 function splitBusiness(b: Business): BusinessData {
@@ -144,4 +147,17 @@ export async function setWaSince(db: Db, businessId: string, since: Date): Promi
 
 export async function businessesOnWhatsApp(db: Db): Promise<BusinessRow[]> {
   return db.query<BusinessRow>("SELECT * FROM businesses WHERE kapso_phone_number_id IS NOT NULL");
+}
+
+export async function setWebhook(db: Db, businessId: string, webhook: { id: string; secret: string } | null): Promise<void> {
+  await db.query("UPDATE businesses SET kapso_webhook_id = $2, kapso_webhook_secret = $3 WHERE id = $1", [
+    businessId,
+    webhook?.id ?? null,
+    webhook?.secret ?? null,
+  ]);
+}
+
+export async function businessForNumber(db: Db, phoneNumberId: string): Promise<BusinessRow | null> {
+  const [row] = await db.query<BusinessRow>("SELECT * FROM businesses WHERE kapso_phone_number_id = $1", [phoneNumberId]);
+  return row ?? null;
 }

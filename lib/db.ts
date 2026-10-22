@@ -11,6 +11,8 @@ export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
   /** Run `fn` in one transaction; everything inside sees and writes the same state. */
   tx<T>(fn: (db: Db) => Promise<T>): Promise<T>;
+  /** Close connections (tests, shutdown). */
+  close(): Promise<void>;
 }
 
 const SCHEMA = `
@@ -58,6 +60,9 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (business_id, chat_id) REFERENCES chats(business_id, id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (business_id, chat_id, at);
+-- Added for webhooks (online hosting).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS kapso_webhook_id text;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS kapso_webhook_secret text;
 `;
 
 interface Querier {
@@ -77,6 +82,9 @@ class PgliteDb implements Db {
     if (!this.root) return fn(this);
     return this.root.transaction((t) => fn(new PgliteDb(t)));
   }
+  async close(): Promise<void> {
+    await this.root?.close();
+  }
 }
 
 class PoolDb implements Db {
@@ -89,6 +97,7 @@ class PoolDb implements Db {
     const inTx: Db = {
       query: async <R,>(sql: string, params: unknown[] = []) => (await client.query(sql, params)).rows as R[],
       tx: (inner) => inner(inTx),
+      close: async () => undefined,
     };
     try {
       await client.query("BEGIN");
@@ -101,6 +110,9 @@ class PoolDb implements Db {
     } finally {
       client.release();
     }
+  }
+  async close(): Promise<void> {
+    await this.pool.end();
   }
 }
 
@@ -122,6 +134,10 @@ export async function openDb(opts: { url?: string; dir?: string; memory?: boolea
 const g = globalThis as unknown as { __kapsoDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
+  // Serverless hosts have no lasting disk: the built-in database would lose everything.
+  if (process.env.VERCEL && !process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required online (Vercel). Add the Neon connection string in the project settings.");
+  }
   g.__kapsoDb ??= openDb({ url: process.env.DATABASE_URL });
   return g.__kapsoDb;
 }

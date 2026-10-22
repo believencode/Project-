@@ -106,3 +106,23 @@ export async function sendText(phoneNumberId: string, to: string, body: string):
   });
   return res.messages?.[0]?.id;
 }
+
+const WEBHOOK_EVENTS = ["whatsapp.message.received", "whatsapp.message.sent"];
+
+/** Ask Kapso to push this number's messages to `url`, signed with `secret`. Returns the webhook id. */
+export async function createWebhook(phoneNumberId: string, url: string, secret: string): Promise<string> {
+  const res = await call<{ data: { id: string } }>(`${PLATFORM_API}/whatsapp/phone_numbers/${phoneNumberId}/webhooks`, {
+    method: "POST",
+    body: JSON.stringify({ whatsapp_webhook: { url, secret_key: secret, events: WEBHOOK_EVENTS, active: true } }),
+  });
+  return res.data.id;
+}
+
+export async function deleteWebhook(phoneNumberId: string, webhookId: string): Promise<void> {
+  const res = await fetch(`${PLATFORM_API}/whatsapp/phone_numbers/${phoneNumberId}/webhooks/${webhookId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  // Already gone is fine.
+  if (!res.ok && res.status !== 404) throw new KapsoError(`Kapso ${res.status}: ${(await res.text()).slice(0, 300)}`, res.status);
+}
