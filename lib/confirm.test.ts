@@ -54,7 +54,7 @@ describe("questions", () => {
   const qs = buildQuestions(sheet);
 
   it("asks one question per unclear fact", () => {
-    expect(qs.map((q) => q.kind)).toEqual(["price", "price_conflict", "availability", "hours", "address"]);
+    expect(qs.map((q) => q.kind)).toEqual(["price", "price_conflict", "availability", "fact", "fact", "hours", "address"]);
   });
 
   it("applies the answers", () => {
@@ -62,6 +62,8 @@ describe("questions", () => {
       "price-p1": { action: "keep" },
       "conflict-p2": { action: "set_amount", amount: 5000 },
       "avail-a1": { action: "set_text", text: "Белые кроссовки: размеры 39–44" },
+      "fact-f1": { action: "keep" },
+      "fact-f2": { action: "remove" },
       hours: { action: "keep" },
       address: { action: "set_text", text: "Бишкек, 10 мкр, 34" },
     }, NOW);
@@ -73,6 +75,7 @@ describe("questions", () => {
     expect(out.prices[1].source?.customer).toBe("Азамат");
     expect(out.availability[0]).toMatchObject({ text: "Белые кроссовки: размеры 39–44", needs_check: false, source: { by: "owner" } });
     expect(out.address_source?.by).toBe("owner");
+    expect(out.facts?.map((f) => [f.topic, f.needs_check])).toEqual([["Доставка", false]]);
     expect(buildQuestions(out)).toEqual([]);
   });
 

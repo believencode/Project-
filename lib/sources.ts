@@ -1,6 +1,7 @@
 import type { Chat, FactSource, Message, PriceItem, Sheet } from "./types";
 import { numbersIn } from "./guard";
 import { findItems, normalize } from "./text";
+import { overlap } from "./knowledge";
 
 /**
  * Finds, for each fact in a sheet, the chat message that backs it, and the
@@ -103,6 +104,17 @@ function mergeDuplicates(prices: PriceItem[]): PriceItem[] {
   return out;
 }
 
+/** The staff message a fact was taken from: the same numbers, then the most words in common. */
+function factSource(text: string, located: Located[]): Located | undefined {
+  const nums = numbersIn(text);
+  return located
+    .filter(({ message }) => message.from === "staff")
+    .filter(({ message }) => nums.every((n) => numbersIn(message.text).includes(n)))
+    .map((l) => ({ l, score: overlap(text, l.message.text) }))
+    .filter((x) => x.score >= Math.min(2, overlap(text, text)))
+    .sort((a, b) => b.score - a.score || newestFirst(a.l, b.l))[0]?.l;
+}
+
 export function attachSources(sheet: Sheet, chats: Chat[]): Sheet {
   const located = allMessages(chats);
   const items = sheet.prices.map((p) => p.item);
@@ -117,6 +129,11 @@ export function attachSources(sheet: Sheet, chats: Chat[]): Sheet {
       if (n.source) return n;
       const hit = newestContaining(n.text, located);
       return hit ? { ...n, source: toSource(hit) } : n;
+    }),
+    facts: sheet.facts?.map((f) => {
+      if (f.source) return f;
+      const hit = factSource(f.text, located);
+      return hit ? { ...f, source: toSource(hit) } : f;
     }),
   };
 }

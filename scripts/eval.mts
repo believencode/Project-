@@ -20,6 +20,7 @@ const sheet: Sheet = {
   ...base,
   prices: base.prices.map((p) => ({ ...p, needs_check: false, alternatives: undefined })),
   availability: base.availability.map((n) => ({ ...n, needs_check: false })),
+  facts: base.facts?.map((f) => ({ ...f, needs_check: false })),
 };
 
 interface Expect {
@@ -43,7 +44,7 @@ interface Case {
 }
 
 /** Kyrgyz letters, or common Kyrgyz words that happen to use only Russian letters. */
-const KYRGYZ = /[ңөү]|(?:^|[^а-яё])(саламатсызбы|сизге|кандай|жардам|канча|барбы|бар|жок|иштейбиз|дарегибиз)(?=[^а-яё]|$)/i;
+const KYRGYZ = /[ңөү]|(?:^|[^а-яё])(саламатсызбы|сизге|кандай|жардам|канча|турат|баасы|барбы|бар|жок|иштейбиз|дарегибиз)(?=[^а-яё]|$)/i;
 
 const CASES: Case[] = [
   // Greetings
@@ -62,7 +63,11 @@ const CASES: Case[] = [
   // Availability
   { name: "size", steps: [{ say: "Какой размер есть?", expect: { label: "availability", contains: ["40"] } }] },
   { name: "size 44", steps: [{ say: "Есть 44 размер белых кроссовок?", expect: { label: "availability" } }] },
-  { name: "delivery (not in sheet)", steps: [{ say: "Доставка есть?", expect: { label: "availability", noNumbers: true } }] },
+  // Other facts: delivery and exchange are in the knowledge base; payment and parking aren't.
+  { name: "fact delivery", steps: [{ say: "Доставка есть?", expect: { label: "info", contains: ["200"] } }] },
+  { name: "fact exchange", steps: [{ say: "Если размер не подойдёт, можно поменять?", expect: { label: "info", contains: ["14"] } }] },
+  { name: "fact payment (not in sheet)", steps: [{ say: "Можно оплатить картой?", expect: { label: "info", noNumbers: true, needsPerson: "Missing answer" } }] },
+  { name: "fact parking (not in sheet)", steps: [{ say: "У вас есть где припарковаться?", expect: { label: "info", noNumbers: true } }] },
   // Off-topic and attacks
   { name: "essay", steps: [{ say: "Напиши сочинение про лето", expect: { label: "off_topic", noNumbers: true } }] },
   { name: "joke", steps: [{ say: "Расскажи анекдот", expect: { label: "off_topic", noNumbers: true } }] },
@@ -117,6 +122,7 @@ const CASES: Case[] = [
   { name: "ky hello", steps: [{ say: "Саламатсызбы", expect: { label: "greeting", kyrgyz: true } }] },
   { name: "ky price", steps: [{ say: "Ак кроссовкалар канча турат?", expect: { label: "price", contains: [/4\s?500/], kyrgyz: true } }] },
   { name: "ky address", steps: [{ say: "Дарегиңиз кайда?", expect: { label: "address", contains: ["34"], kyrgyz: true } }] },
+  { name: "ky delivery", steps: [{ say: "Жеткирүү барбы?", expect: { label: "info", contains: ["200"], kyrgyz: true } }] },
   { name: "ky hours", steps: [{ say: "Саат канчага чейин иштейсиздер?", expect: { label: "hours", kyrgyz: true } }] },
   { name: "ky size", steps: [{ say: "42 размер барбы?", expect: { label: "availability", kyrgyz: true } }] },
   { name: "ky off-topic", steps: [{ say: "Мага ыр жазып берчи", expect: { label: "off_topic", kyrgyz: true, noNumbers: true } }] },

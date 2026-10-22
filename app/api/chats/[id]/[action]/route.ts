@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after as afterResponse, NextResponse } from "next/server";
 import type { Chat, Message } from "@/lib/types";
 import { currentBusiness } from "@/lib/session";
 import { loadChat, saveChat } from "@/lib/repo";
@@ -9,11 +9,12 @@ import { writeNewMessages } from "@/lib/writer";
 import { testChat } from "@/lib/fixtures";
 import { withLock } from "@/lib/locks";
 import { deliverNew } from "@/lib/whatsapp/outbound";
+import { learnFromStaff } from "@/lib/learn";
 
 // AI calls can take several seconds.
 export const maxDuration = 60;
 
-const ACTIONS = ["customer", "staff", "settle", "resume", "skip30", "open", "reset"] as const;
+const ACTIONS = ["customer", "staff", "settle", "resume", "skip30", "open", "reset", "suggestion"] as const;
 type Action = (typeof ACTIONS)[number];
 
 /**
@@ -33,6 +34,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     requestId?: string;
     ok?: boolean;
     source?: "inbox" | "echo";
+    suggestionId?: string;
+    status?: "added" | "dismissed";
   };
 
   return withLock(`${row.id}:${id}`, async () => {
@@ -56,6 +59,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!body.text?.trim()) return NextResponse.json({ error: "text required" }, { status: 400 });
         // A simulated reply "from the phone" only makes sense on the test chat.
         after = staffReply(before, body.text.trim(), now, body.source === "echo" && before.is_test ? "echo" : "inbox");
+        // Once the reply is saved: did it answer a question the bot couldn't? Then propose it as a fact.
+        afterResponse(() => learnFromStaff(db, row.id, id));
+        break;
+      case "suggestion":
+        // The owner added the proposed fact to the knowledge base (the sheet is saved separately) or dismissed it.
+        if (!body.suggestionId || (body.status !== "added" && body.status !== "dismissed")) {
+          return NextResponse.json({ error: "suggestionId and status required" }, { status: 400 });
+        }
+        after = {
+          ...before,
+          fact_suggestions: (before.fact_suggestions ?? []).map((s) => (s.id === body.suggestionId ? { ...s, status: body.status } : s)),
+        };
         break;
       case "settle": {
         if (!body.requestId) return NextResponse.json({ error: "requestId required" }, { status: 400 });

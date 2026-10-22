@@ -14,7 +14,10 @@ export type EditOp =
   | { op: "set_hours"; text: string }
   | { op: "set_address"; text: string }
   | { op: "set_availability"; item: string; text: string }
-  | { op: "remove_availability"; item: string };
+  | { op: "remove_availability"; item: string }
+  | { op: "set_details"; item: string; text: string }
+  | { op: "set_fact"; topic: string; text: string }
+  | { op: "remove_fact"; topic: string };
 
 /** The sheet entry an op refers to, matched loosely ("лоферы" → "Чёрные лоферы"). */
 function priceIndex(sheet: Sheet, item: string): number {
@@ -22,6 +25,15 @@ function priceIndex(sheet: Sheet, item: string): number {
   if (exact >= 0) return exact;
   const hit = findItems(item, sheet.prices.map((p) => p.item));
   return hit.length === 1 ? sheet.prices.findIndex((p) => p.item === hit[0]) : -1;
+}
+
+/** The fact about this topic ("доставка" → the "Доставка" fact). */
+function factIndex(sheet: Sheet, topic: string): number {
+  const facts = sheet.facts ?? [];
+  const exact = facts.findIndex((f) => normalize(f.topic) === normalize(topic));
+  if (exact >= 0) return exact;
+  const hit = findItems(topic, facts.map((f) => f.topic));
+  return hit.length === 1 ? facts.findIndex((f) => f.topic === hit[0]) : -1;
 }
 
 function noteIndex(sheet: Sheet, item: string): number {
@@ -49,6 +61,19 @@ export function validateOps(ops: EditOp[], sheet: Sheet, request: string): { ok:
         break;
       case "remove_availability":
         if (noteIndex(sheet, op.item) < 0) dropped.push(`removing stock note «${op.item}»`);
+        else ok.push(op);
+        break;
+      case "remove_fact":
+        if (factIndex(sheet, op.topic) < 0) dropped.push(`removing «${op.topic}» (not in your facts)`);
+        else ok.push(op);
+        break;
+      case "set_details":
+        if (priceIndex(sheet, op.item) < 0 || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(`details for «${op.item}»`);
+        else ok.push(op);
+        break;
+      case "set_fact":
+        // A new fact's numbers must be in the owner's words.
+        if (!op.topic.trim() || !op.text.trim() || !numbersIn(op.text).every((n) => said.has(n))) dropped.push(`«${op.topic || op.text}»`);
         else ok.push(op);
         break;
       case "set_hours":
@@ -86,13 +111,25 @@ export function describeOp(op: EditOp, sheet: Sheet): string {
       const i = noteIndex(sheet, op.item);
       return `Remove stock note: «${i >= 0 ? sheet.availability[i].text : op.item}»`;
     }
+    case "set_details": {
+      const i = priceIndex(sheet, op.item);
+      return `${i >= 0 ? sheet.prices[i].item : op.item} details: «${op.text}»`;
+    }
+    case "set_fact": {
+      const i = factIndex(sheet, op.topic);
+      return i >= 0 ? `${sheet.facts![i].topic}: «${sheet.facts![i].text}» → «${op.text}»` : `Add fact: ${op.topic} — «${op.text}»`;
+    }
+    case "remove_fact": {
+      const i = factIndex(sheet, op.topic);
+      return `Remove fact: ${i >= 0 ? sheet.facts![i].topic : op.topic}`;
+    }
   }
 }
 
 /** Apply checked operations. What the owner says is confirmed, with the owner as the source. */
 export function applyOps(sheet: Sheet, ops: EditOp[], now: number): Sheet {
   const owner: FactSource = { by: "owner", at: now };
-  let next: Sheet = { ...sheet, prices: [...sheet.prices], availability: [...sheet.availability] };
+  let next: Sheet = { ...sheet, prices: [...sheet.prices], availability: [...sheet.availability], facts: [...(sheet.facts ?? [])] };
   ops.forEach((op, k) => {
     switch (op.op) {
       case "set_price": {
@@ -122,6 +159,23 @@ export function applyOps(sheet: Sheet, ops: EditOp[], now: number): Sheet {
       case "remove_availability": {
         const i = noteIndex(next, op.item);
         if (i >= 0) next.availability.splice(i, 1);
+        break;
+      }
+      case "set_details": {
+        const i = priceIndex(next, op.item);
+        if (i >= 0) next.prices[i] = { ...next.prices[i], details: op.text.trim() };
+        break;
+      }
+      case "set_fact": {
+        const i = factIndex(next, op.topic);
+        const fact = { topic: op.topic.trim(), text: op.text.trim(), needs_check: false, source: owner };
+        if (i >= 0) next.facts![i] = { ...next.facts![i], ...fact, topic: next.facts![i].topic };
+        else next.facts!.push({ id: `fe${now}-${k}`, ...fact });
+        break;
+      }
+      case "remove_fact": {
+        const i = factIndex(next, op.topic);
+        if (i >= 0) next.facts!.splice(i, 1);
         break;
       }
     }

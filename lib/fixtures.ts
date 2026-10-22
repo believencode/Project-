@@ -39,6 +39,10 @@ export function shoeSheet(name = "Обувь 10"): Sheet {
       { id: "p2", item: "Чёрные лоферы", amount: 5200, currency: "сом", needs_check: true },
     ],
     availability: [{ id: "a1", text: "Белые кроссовки: размеры 40–43", needs_check: true }],
+    facts: [
+      { id: "f1", topic: "Доставка", text: "Доставка по Бишкеку — 200 сом, привозим на следующий день.", needs_check: true },
+      { id: "f2", topic: "Обмен", text: "Обувь можно обменять в течение 14 дней с чеком.", needs_check: true },
+    ],
     top_questions: ["Размер", "Цена", "Доставка", "Часы работы"],
     tone_examples: [
       "Здравствуйте! Да, есть 41 и 42, приходите 😊",

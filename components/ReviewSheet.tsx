@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Sheet } from "@/lib/types";
+import type { InfoFact, Sheet } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { decideWithRules } from "@/lib/rules";
 import { BUSINESS_TYPES, MISSING_ANSWER_LINE, offTopicLine } from "@/lib/copy";
@@ -32,14 +32,19 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
   if (!business) return null;
   const sheet = business.sheet;
 
-  const unchecked = sheet.prices.filter((p) => p.needs_check).length + sheet.availability.filter((n) => n.needs_check).length;
+  const facts = sheet.facts ?? [];
+  const unchecked =
+    sheet.prices.filter((p) => p.needs_check).length + sheet.availability.filter((n) => n.needs_check).length + facts.filter((f) => f.needs_check).length;
 
   const confirmAll = () =>
     updateSheet((s) => ({
       ...s,
       prices: s.prices.map((p) => ({ ...p, needs_check: false })),
       availability: s.availability.map((n) => ({ ...n, needs_check: false })),
+      facts: s.facts?.map((f) => ({ ...f, needs_check: false })),
     }));
+  const setFact = (id: string, patch: Partial<InfoFact>) =>
+    updateSheet((s) => ({ ...s, facts: (s.facts ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
 
   const finish = () => {
     setSaved(true);
@@ -110,6 +115,15 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
                         aria-label="Item"
                         onChange={(e) => updateSheet((s) => ({ ...s, prices: s.prices.map((x) => (x.id === p.id ? { ...x, item: e.target.value, needs_check: false } : x)) }))}
                       />
+                      <input
+                        type="text"
+                        className="small"
+                        style={{ marginTop: 4 }}
+                        value={p.details ?? ""}
+                        placeholder="Details: colours, sizes made, what's included"
+                        aria-label="Details"
+                        onChange={(e) => updateSheet((s) => ({ ...s, prices: s.prices.map((x) => (x.id === p.id ? { ...x, details: e.target.value } : x)) }))}
+                      />
                     </td>
                     <td>
                       <input
@@ -177,6 +191,33 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
             ))}
             <button className="ghost" onClick={() => updateSheet((s) => ({ ...s, availability: [...s.availability, { id: rowId("a"), text: "", needs_check: false }] }))}>
               + Add note
+            </button>
+          </div>
+
+          <div className="card">
+            <h2>Other facts</h2>
+            <p className="muted small">Delivery, payment, returns, parking — anything else customers ask. The bot answers from these.</p>
+            {facts.map((f) => (
+              <div key={f.id} className="stack" style={{ marginBottom: 12, gap: 4 }}>
+                <div className="row" style={{ flexWrap: "nowrap" }}>
+                  <input type="text" value={f.topic} placeholder="Доставка" aria-label="Topic" style={{ maxWidth: 160 }} onChange={(e) => setFact(f.id, { topic: e.target.value, needs_check: false })} />
+                  {f.needs_check ? (
+                    <>
+                      <span className="badge check">check this</span>
+                      <button className="small" onClick={() => setFact(f.id, { needs_check: false })}>Confirm</button>
+                    </>
+                  ) : (
+                    <span className="badge ok">confirmed</span>
+                  )}
+                  <button className="ghost small" aria-label="Remove" onClick={() => updateSheet((s) => ({ ...s, facts: (s.facts ?? []).filter((x) => x.id !== f.id) }))}>
+                    ✕
+                  </button>
+                </div>
+                <input type="text" value={f.text} placeholder="Доставка по Бишкеку — 200 сом." aria-label="Fact" onChange={(e) => setFact(f.id, { text: e.target.value, needs_check: false })} />
+              </div>
+            ))}
+            <button className="ghost" onClick={() => updateSheet((s) => ({ ...s, facts: [...(s.facts ?? []), { id: rowId("f"), topic: "", text: "", needs_check: false }] }))}>
+              + Add fact
             </button>
           </div>
         </div>

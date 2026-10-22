@@ -8,6 +8,7 @@ export const LABELS = [
   "order",
   "address",
   "availability",
+  "info",
   "off_topic",
 ] as const;
 export type Label = (typeof LABELS)[number];
@@ -35,6 +36,8 @@ export interface PriceItem {
   source?: FactSource;
   /** Other prices staff quoted for the same item at other times: the owner picks one. */
   alternatives?: { amount: number; source: FactSource }[];
+  /** Catalog details that don't change often: sizes made, colours, what's included. */
+  details?: string;
 }
 
 export interface AvailabilityNote {
@@ -42,6 +45,35 @@ export interface AvailabilityNote {
   text: string;
   needs_check: boolean;
   source?: FactSource;
+}
+
+/**
+ * Anything else customers ask about the business: delivery, payment, returns,
+ * parking, warranty… One fact, in the owner's words.
+ */
+export interface InfoFact {
+  id: string;
+  /** Short topic in Russian, e.g. "Доставка". */
+  topic: string;
+  text: string;
+  needs_check: boolean;
+  source?: FactSource;
+}
+
+/**
+ * A fact the app proposes after staff answered a question the bot couldn't:
+ * the owner adds it to the knowledge base in one tap, and the bot answers it next time.
+ */
+export interface FactSuggestion {
+  /** The bot's "a staff member will check" message this answers. */
+  id: string;
+  question: string;
+  answer: string;
+  topic: string;
+  text: string;
+  at: number;
+  /** Set once the owner added it to the knowledge base or dismissed it. */
+  status?: "added" | "dismissed";
 }
 
 /** Reply language: always Russian, always Kyrgyz, or match the customer. */
@@ -57,6 +89,8 @@ export interface Sheet {
   address_source?: FactSource;
   prices: PriceItem[];
   availability: AvailabilityNote[];
+  /** Other facts (delivery, payment, returns…). Missing in sheets made before the knowledge base. */
+  facts?: InfoFact[];
   top_questions: string[];
   tone_examples: string[];
   allowed_topics: Topic[];
@@ -153,6 +187,8 @@ export interface Chat {
   is_test?: boolean;
   /** A real WhatsApp chat (customer messages come from WhatsApp, replies go out on WhatsApp). */
   is_whatsapp?: boolean;
+  /** Facts proposed from staff answers in this chat, waiting for the owner. */
+  fact_suggestions?: FactSuggestion[];
 }
 
 export interface BackupAnswers {
