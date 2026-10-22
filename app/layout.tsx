@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store";
 import { TopBar } from "@/components/TopBar";
+import { AuthGate } from "@/components/AuthGate";
+
+export const viewport = { width: "device-width", initialScale: 1 };
 
 export const metadata: Metadata = {
   title: "Kapso Desk",
@@ -14,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <StoreProvider>
           <TopBar />
-          {children}
+          <AuthGate>{children}</AuthGate>
         </StoreProvider>
       </body>
     </html>

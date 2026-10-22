@@ -35,10 +35,13 @@ function Inbox() {
                 // Opening a chat means staff have seen it: clear "Needs a person".
                 setSelected(c.id);
                 setSeen(c.needs_person ? { chatId: c.id, flag: c.needs_person } : null);
-                open(c.id);
+                if (c.needs_person) void open(c.id);
               }}>
               <div className="top">
-                <span>{c.customer}</span>
+                <span>
+                  {c.customer}
+                  {c.is_whatsapp ? <span className="badge wa-badge" style={{ marginLeft: 6 }}>WhatsApp</span> : null}
+                </span>
                 <span className="muted small">{last ? new Date(last.at).toLocaleDateString("ru-RU") : ""}</span>
               </div>
               <div className="preview">
@@ -53,7 +56,9 @@ function Inbox() {
         {current ? (
           <>
             <ChatThread chat={current} seen={seen?.chatId === current.id ? seen.flag : null} />
-            <SimulateCustomer onSend={(t) => sendCustomer(current.id, t)} onVoice={() => sendCustomer(current.id, "", "voice")} />
+            {current.is_whatsapp ? null : (
+              <SimulateCustomer onSend={(t) => void sendCustomer(current.id, t)} onVoice={() => void sendCustomer(current.id, "", "voice")} />
+            )}
           </>
         ) : (
           <div className="messages" style={{ alignItems: "center", justifyContent: "center" }}>

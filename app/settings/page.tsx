@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
+import { WhatsAppSettings } from "@/components/WhatsAppSettings";
 
 export default function SettingsPage() {
   const { business, deleteImportedChats, setBusiness } = useStore();
@@ -16,6 +17,8 @@ export default function SettingsPage() {
   return (
     <main className="page narrow">
       <h1>Settings</h1>
+
+      <WhatsAppSettings />
 
       <div className="card stack">
         <h2>Knowledge sheet</h2>
@@ -44,7 +47,7 @@ export default function SettingsPage() {
 
       <div className="card stack">
         <h2>Prototype</h2>
-        <button className="ghost" onClick={() => { setBusiness(null); router.push("/"); }}>Reset prototype and start over</button>
+        <button className="ghost" onClick={async () => { await setBusiness(null); router.push("/"); }}>Reset prototype and start over</button>
       </div>
     </main>
   );

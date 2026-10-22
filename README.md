@@ -25,26 +25,27 @@ customer's language; a guard blocks any message with a number that isn't a confi
 reached, the bot sends nothing and the chat goes to a person. Without a key the app runs in demo mode (keyword rules
 and fixed lines, labelled "fixed line"). Counts, pauses, handoffs and booking/order requests stay in code either way.
 
-State lives in the browser (localStorage). **Settings → Reset prototype** starts over.
+Everything is saved in Postgres. Without `DATABASE_URL` the app uses PGlite, Postgres running inside the server
+process and stored in `./data/pg`, so there is nothing to install. Owners sign up with email and password; each owner
+has one business and sees only their own data. **Settings → Reset prototype** deletes the business.
 
-## Real WhatsApp through Kapso (sandbox)
+## Real WhatsApp through Kapso
 
-```bash
-KAPSO_API_KEY=... LLM_PROVIDER=gemini GEMINI_API_KEY=... npm run kapso
-```
+Set `KAPSO_API_KEY` (a key for a separate Kapso project), start the app, then **Settings → WhatsApp → Connect** a
+number: the sandbox for testing, or a WhatsApp Business app number. The server checks connected numbers for new
+messages every 3 seconds (`lib/whatsapp/poller.ts`), answers through the same bot logic as the web app
+(`lib/turn.ts`) once the business is live, and saves everything to the database. WhatsApp chats show in the inbox with
+a WhatsApp badge; staff replies typed there and Confirm/Decline go out on WhatsApp (`lib/whatsapp/outbound.ts`).
+Staff replies from the WhatsApp Business app pause the bot in that chat. Imported history and messages from before the
+connection are never answered. All Kapso calls are in `lib/kapso.ts`.
 
-The bridge (`scripts/kapso-bridge.mts`) checks the Kapso project's sandbox number for new messages every 3 seconds,
-runs each one through the same bot logic as the web app (`lib/turn.ts`), and sends the replies. Staff replies sent
-from the WhatsApp Business app pause the bot in that chat. State is kept in `data/kapso-bridge.json`; it answers
-from the demo shoe shop facts until the web app saves a real sheet there. All Kapso calls are in `lib/kapso.ts`.
-
-To test: in the Kapso dashboard, **WhatsApp → Sandbox → Add Test Number**, enter your phone number, then send the
-6-character code to the sandbox number from that phone. Sandbox replies use the project's Kapso credits.
-
-Behind an HTTPS proxy, Node 22.21+ needs `NODE_USE_ENV_PROXY=1`. Production will use Kapso webhooks instead of polling.
+Sandbox: in the Kapso dashboard, **WhatsApp → Sandbox → Add Test Number**, then send the 6-character code from that
+phone. Sandbox replies use the project's Kapso credits. Behind an HTTPS proxy, Node 22.21+ needs `NODE_USE_ENV_PROXY=1`.
+Production will receive Kapso webhooks instead of polling.
 
 ## Demo script
 
+0. Open the app and **create an account** (email and password).
 1. **Set up a business** → name → **Shop** → **I scanned it** → **Share 6 months**.
 2. Answer the questions one by one: confirm a price (with the chat message it came from), pick the current price of
    the loafers (5200 newest vs 5000 older), confirm stock, hours and address. Check the summary, then
@@ -71,8 +72,11 @@ including the basic-facts screen.
 - `lib/sources.ts` — links every fact to the chat message behind it and finds older prices
 - `lib/clarify.ts` — the one-by-one questions and how answers change the sheet
 - `lib/edits.ts`, `lib/editRequest.ts` — change requests in the owner's words: AI proposes, code checks
-- `app/api/turn`, `app/api/settle`, `app/api/build-sheet` — server routes for a customer message, a staff confirm/decline, and setup
-- `lib/kapso.ts` — the only file that talks to Kapso; `lib/turn.ts` — one customer message through the bot, shared by the web app and the bridge
+- `lib/db.ts`, `lib/repo.ts`, `lib/auth.ts` — Postgres (or PGlite), loading and saving businesses and chats, owner accounts
+- `app/api/business`, `app/api/chats/[id]/[action]`, `app/api/auth/*`, `app/api/whatsapp` — the server API the web app uses
+- `app/api/turn` (stateless, used by `npm run eval`), `app/api/build-sheet`, `app/api/edit-sheet`
+- `lib/kapso.ts` — the only file that talks to Kapso; `lib/whatsapp/` — checking for messages and sending replies
+- `lib/turn.ts` — one customer message through the bot, shared by the web app and WhatsApp
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)
 - `lib/fixtures.ts` — shoe shop and café sheets, 8 demo chats
-- `app/` — wizard (`/setup`), review (`/review`), live + test box (`/live`), inbox, settings
+- `app/` — login, wizard (`/setup`), review (`/review`), live + test box (`/live`), inbox, requests, settings

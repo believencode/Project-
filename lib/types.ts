@@ -92,6 +92,8 @@ export interface Message {
   intent?: BotIntent;
   /** Bot messages: written by the AI, or a fixed line (demo mode without an AI key). */
   written_by?: "ai" | "template";
+  /** WhatsApp chats: the message could not be sent to the customer. */
+  delivery?: "failed";
 }
 
 export type NeedsPersonReason = "Off-topic" | "Missing answer" | "Voice/photo" | "Booking/order" | "AI unavailable";
@@ -149,6 +151,8 @@ export interface Chat {
   draft?: Draft | null;
   requests?: ActionRequest[];
   is_test?: boolean;
+  /** A real WhatsApp chat (customer messages come from WhatsApp, replies go out on WhatsApp). */
+  is_whatsapp?: boolean;
 }
 
 export interface BackupAnswers {

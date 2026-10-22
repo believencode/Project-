@@ -23,39 +23,29 @@ export default function RequestsPage() {
           No requests yet. On the Live screen, try «Хочу заказать белые кроссовки» or «Хочу забронировать столик».
         </div>
       ) : (
-        <div className="card" style={{ padding: 0 }}>
-          <table className="facts">
-            <thead>
-              <tr>
-                <th style={{ paddingLeft: 16 }}>Customer</th>
-                <th>Type</th>
-                <th>Details</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ chat, r }) => (
-                <tr key={r.id}>
-                  <td style={{ paddingLeft: 16 }}>
-                    <Link href={`/inbox?chat=${chat.id}`}>{chat.customer}</Link>
-                    <div className="small muted">{chat.phone === "test" ? "test number" : chat.phone}</div>
-                  </td>
-                  <td>{r.kind === "order" ? "Order" : "Booking"}</td>
-                  <td>{r.summary}</td>
-                  <td><span className={STATUS[r.status]}>{r.status}</span></td>
-                  <td>
-                    {r.status === "pending" ? (
-                      <div className="row" style={{ flexWrap: "nowrap" }}>
-                        <button className="small" onClick={() => settle(chat.id, r.id, false)}>Decline</button>
-                        <button className="primary small" onClick={() => settle(chat.id, r.id, true)}>Confirm</button>
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="stack">
+          {rows.map(({ chat, r }) => (
+            <div key={r.id} className="card request-card">
+              <div className="row between" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+                <div>
+                  <div className="small muted">{r.kind === "order" ? "Order" : "Booking"} · {new Date(r.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
+                  <div className="value">{r.summary}</div>
+                  <div className="small">
+                    <Link href={`/inbox?chat=${encodeURIComponent(chat.id)}`}>{chat.customer}</Link>{" "}
+                    <span className="muted">{chat.phone === "test" ? "test number" : chat.phone}</span>
+                    {chat.is_whatsapp ? <span className="badge wa-badge" style={{ marginLeft: 6 }}>WhatsApp</span> : null}
+                  </div>
+                </div>
+                <span className={STATUS[r.status]}>{r.status}</span>
+              </div>
+              {r.status === "pending" ? (
+                <div className="row" style={{ marginTop: 10, flexWrap: "nowrap" }}>
+                  <button className="block" onClick={() => settle(chat.id, r.id, false)}>Decline</button>
+                  <button className="primary block" onClick={() => settle(chat.id, r.id, true)}>Confirm</button>
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
       )}
     </main>

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 
 export function TopBar() {
   const path = usePathname();
-  const { business } = useStore();
+  const { business, user, logout } = useStore();
+  const router = useRouter();
   const links = business?.live
     ? [
         ["/live", "Live"],
@@ -34,7 +35,18 @@ export function TopBar() {
         ))}
       </nav>
       <div className="spacer" />
-      {business ? <span className="muted small">{business.sheet.name}</span> : null}
+      {business ? <span className="muted small biz-name">{business.sheet.name}</span> : null}
+      {user ? (
+        <button
+          className="ghost small"
+          onClick={async () => {
+            await logout();
+            router.replace("/login");
+          }}
+        >
+          Log out
+        </button>
+      ) : null}
     </header>
   );
 }

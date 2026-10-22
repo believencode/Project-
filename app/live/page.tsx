@@ -62,9 +62,9 @@ export default function LivePage() {
             <h1 style={{ margin: 0 }}>Bot is answering</h1>
             {mode ? (
               mode.ai ? (
-                <span className="badge ok">AI writes every reply · {mode.model}</span>
+                <span className="badge ok wrap">AI writes every reply · {mode.model}</span>
               ) : (
-                <span className="badge check">Demo mode: keyword rules and fixed lines — set LLM_PROVIDER to turn on AI</span>
+                <span className="badge check wrap">Demo mode: keyword rules and fixed lines — set LLM_PROVIDER to turn on AI</span>
               )
             ) : null}
             <span className="muted small">

@@ -40,7 +40,7 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
 
   const send = () => {
     if (!draft.trim()) return;
-    sendStaff(chat.id, draft.trim(), "inbox");
+    void sendStaff(chat.id, draft.trim(), "inbox");
     setDraft("");
   };
 
@@ -49,7 +49,9 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
       <div className="thread-head">
         <div className="row between">
           <div>
-            <strong>{chat.customer}</strong> <span className="muted small">{chat.phone !== "test" ? chat.phone : "simulated customer"}</span>
+            <strong>{chat.customer}</strong>{" "}
+            {chat.is_whatsapp ? <span className="badge wa-badge">WhatsApp</span> : null}{" "}
+            <span className="muted small">{chat.phone !== "test" ? chat.phone : "simulated customer"}</span>
           </div>
           <div className="row">
             {paused ? (
@@ -105,6 +107,7 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
                   <span className={m.written_by === "ai" ? "badge ok" : "badge plain"}>{m.written_by === "ai" ? "AI" : "fixed line"}</span>
                 ) : null}
                 {m.label ? <span className="badge plain">{m.label}</span> : null}
+                {m.delivery === "failed" ? <span className="badge alert">not delivered</span> : null}
                 <span>{time(m.at)}</span>
               </div>
             </div>
@@ -115,7 +118,7 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
 
       {composer ? (
         <div className="composer">
-          <input type="text" value={draft} placeholder="Reply as staff (pauses the bot for 30 min)" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
+          <input type="text" value={draft} placeholder={chat.is_whatsapp ? "Reply on WhatsApp (pauses the bot for 30 min)" : "Reply as staff (pauses the bot for 30 min)"} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
           <button className="primary" onClick={send} disabled={!draft.trim()}>Send</button>
         </div>
       ) : null}
