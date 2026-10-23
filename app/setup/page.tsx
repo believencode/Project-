@@ -46,6 +46,7 @@ export default function SetupPage() {
   const step = history[history.length - 1];
   const [name, setName] = useState("");
   const [type, setType] = useState<BusinessType | null>(null);
+  const [about, setAbout] = useState("");
   const [asks, setAsks] = useState<Topic[]>([]);
   const [goal, setGoal] = useState<BackupAnswers["goal"] | null>(null);
   const [facts, setFacts] = useState<Facts>(emptyFacts);
@@ -75,6 +76,7 @@ export default function SetupPage() {
     const sheet: Sheet = {
       name: name.trim() || "Мой бизнес",
       type: t,
+      ...(about.trim() ? { about: about.trim() } : {}),
       language: language ?? "both",
       hours: facts.hours.trim(),
       address: facts.address.trim(),
@@ -183,8 +185,15 @@ export default function SetupPage() {
                 <button key={t.id} className={`choice ${type === t.id ? "on" : ""}`} onClick={() => setType(t.id)}>{tr(`type_${t.id}`)}</button>
               ))}
             </div>
-            {type ? <p className="muted small">{t("customers_might_ask", { example: EMPTY_STATE_EXAMPLE[type] })}</p> : null}
-            <div className="row between"><Back /><button className="primary" disabled={!type} onClick={() => go("share")}>{t("next")}</button></div>
+            {type ? (
+              // "Other" says nothing about the business, so there the owner must describe it.
+              <label className="field">
+                <span>{t("about_q")}{type === "other" ? null : <span className="muted small"> · {t("about_optional")}</span>}</span>
+                <input type="text" maxLength={80} value={about} placeholder={t("about_ph")} autoFocus={type === "other"} onChange={(e) => setAbout(e.target.value)} />
+              </label>
+            ) : null}
+            {type && type !== "other" ? <p className="muted small">{t("customers_might_ask", { example: EMPTY_STATE_EXAMPLE[type] })}</p> : null}
+            <div className="row between"><Back /><button className="primary" disabled={!type || (type === "other" && !about.trim())} onClick={() => go("share")}>{t("next")}</button></div>
           </>
         )}
 

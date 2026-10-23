@@ -510,6 +510,9 @@ export const en = {
   hist_again: "Read again",
   hist_empty: "No shared chats yet. WhatsApp sends them within a few minutes of connecting — try again later. If you chose «Don't share chats», they can't be loaded.",
   err_wa_off: "WhatsApp connection isn't available yet. Contact Jardamchy support.",
+  about_q: "What does your business do?",
+  about_optional: "optional, helps the assistant",
+  about_ph: "e.g. car wash, English courses, Issyk-Kul tours",
 };
 
 export type Key = keyof typeof en;

@@ -5,6 +5,7 @@ import { LABELS } from "./types";
 import { replyFromSheet } from "./rules";
 import { contextItem, extractSlots, isCancel } from "./actions";
 import { detectLanguage } from "./text";
+import { businessLine } from "./copy";
 import { relevantFacts, relevantPrices } from "./knowledge";
 
 /**
@@ -40,7 +41,7 @@ const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fab
 let anthropic: Anthropic | null = null;
 let gemini: GoogleGenAI | null = null;
 
-const CLASSIFY_SYSTEM = `You label the newest WhatsApp message a customer sent to a small business in Bishkek.
+const CLASSIFY_SYSTEM = `You label the newest WhatsApp message a customer sent to a small business in Bishkek. <business> is its name and, if given, what it does.
 Earlier messages are context only: use them to understand short follow-ups like "а 42 есть?" or "а лоферы?".
 Labels:
 - greeting: only hello, thanks, bye, "ок" — nothing else in the message.
@@ -87,7 +88,7 @@ export function languageRule(sheet: Sheet, customerText = ""): string {
 /** The confirmed facts the reply model may use for this question. Large catalogs and fact lists are narrowed in code. */
 function confirmedFacts(sheet: Sheet, text: string, history: HistoryLine[]) {
   return {
-    business: sheet.name,
+    business: businessLine(sheet),
     hours: sheet.hours || null,
     address: sheet.address || null,
     prices: relevantPrices(sheet, text, history).map(({ item, amount, currency, details }) => ({ item, amount, currency, ...(details ? { details } : {}) })),
@@ -191,7 +192,7 @@ export async function decideWithLLM(text: string, sheet: Sheet, history: History
     }
   }
 
-  const { label } = await jsonCall<{ label: Label }>(CLASSIFY_SYSTEM, prompt(history, text), {
+  const { label } = await jsonCall<{ label: Label }>(CLASSIFY_SYSTEM, prompt(history, text, `<business>${businessLine(sheet)}</business>\n`), {
     type: "object",
     properties: { label: { type: "string", enum: [...LABELS] } },
     required: ["label"],

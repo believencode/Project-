@@ -87,6 +87,14 @@ describe("AI writer", () => {
     expect(bot.text).toMatch(/^Я помогаю только/);
   });
 
+  it("tells the AI what the business does, when the owner said", async () => {
+    const [before, after] = turn("Напиши стих", { label: "off_topic", reply: null, missing: false, path: "LLM" });
+    queue.push({ text: "Я помогаю только с вопросами о мойке. По другим вопросам вам напишет сотрудник." });
+    const { jsonCall } = await import("./llm");
+    await writeNewMessages(before, after, { ...sheet, about: "автомойка" });
+    expect(vi.mocked(jsonCall).mock.lastCall?.[1]).toContain(`<business>${sheet.name} (автомойка)</business>`);
+  });
+
   it("retries once when the AI adds a number that isn't allowed", async () => {
     const [before, after] = turn("Хочу заказать белые кроссовки", {
       label: "order", reply: null, missing: false, path: "LLM", slots: { item: "Белые кроссовки" },

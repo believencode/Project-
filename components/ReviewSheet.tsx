@@ -47,7 +47,7 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
         <div>
           <h1>{t(mode === "wizard" ? "review_title_wizard" : "review_title_edit")}</h1>
           <p className="muted">
-            {sheet.name} · {typeLabel} · {business.sheet_built_by === "ai"
+            {sheet.name} · {sheet.about?.trim() || typeLabel} · {business.sheet_built_by === "ai"
               ? t("review_sub_ai", { n: business.chats.filter(isImported).length })
               : t(business.imported_history ? "review_sub_demo" : "review_sub_owner")}
           </p>

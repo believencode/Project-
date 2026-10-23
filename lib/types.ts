@@ -82,6 +82,8 @@ export type ReplyLanguage = "ru" | "ky" | "both";
 export interface Sheet {
   name: string;
   type: BusinessType;
+  /** What the business does, in the owner's words ("автомойка"). Needed for "other". */
+  about?: string;
   language?: ReplyLanguage;
   hours: string;
   address: string;
