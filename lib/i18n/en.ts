@@ -420,6 +420,21 @@ export const en = {
   sandbox_hint: "For testing: write to it from a phone you added in Kapso → WhatsApp → Sandbox.",
   connect: "Connect",
   disconnect: "Disconnect",
+
+  // Alerts to the owner
+  alerts_title: "Alerts",
+  alerts_hint: "When a customer needs a person, Jardamchy sends a WhatsApp message to this number. Use your personal number, not the business number.",
+  alerts_phone: "Your WhatsApp number",
+  alerts_on: "Send alerts",
+  alerts_test: "Send a test",
+  alerts_test_sent: "Test sent. Check WhatsApp on that phone.",
+  alerts_no_template: "Until the alert template is approved by WhatsApp, alerts only reach a number that wrote to the business number in the last 24 hours.",
+  alert_msg: "Jardamchy: {customer} is waiting for a person ({reason}): «{detail}».",
+  alert_link: "Reply: {link}",
+  alert_test_msg: "Jardamchy: test alert. You'll get a message like this when a customer needs a person.",
+  err_alert_phone: "Enter the number with the country code, e.g. +996 555 123 456.",
+  err_alert_no_number: "Connect a WhatsApp number first (Settings → WhatsApp).",
+  err_alert_failed: "WhatsApp didn't deliver the alert. Without an approved template, that number must have written to the business number in the last 24 hours.",
 };
 
 export type Key = keyof typeof en;

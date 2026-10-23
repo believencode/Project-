@@ -54,6 +54,27 @@ classifier labels it `info`, code picks the facts that match (all of them for sm
 
 Code is in `lib/knowledge.ts` (picking facts, open questions) and `lib/learn.ts` (proposing facts from staff answers).
 
+## Alerts to the owner
+
+When a chat starts needing a person (a question the assistant can't answer, off-topic twice, a voice note, a new
+booking or order, the AI unavailable), the owner gets a WhatsApp message on their personal number: who is waiting,
+what they asked, and a link straight to the chat. The owner sets the number in **Settings → Alerts** and can send a
+test. One alert per change, not one per message.
+
+- Without a template, the alert is a plain WhatsApp message, which WhatsApp only delivers if the owner's number wrote
+  to the sending number in the last 24 hours. Good for testing.
+- For production, create a **Utility** template in Kapso (WhatsApp → Templates), e.g. named `needs_person`, Russian
+  body `Клиент {{1}} ждёт ответа: «{{2}}». Ответить: {{3}}` (optionally a Kyrgyz version), and once Meta approves it
+  set `ALERT_TEMPLATE=needs_person`. Templates are delivered at any time; each costs a small fee.
+- `ALERT_PHONE_NUMBER_ID` sends alerts from one Jardamchy number instead of each business's own number.
+
+Code: `lib/alerts.ts`, `app/api/alerts`, `components/AlertSettings.tsx`.
+
+## Checks
+
+Every pull request runs the type check, the tests and the build on GitHub (`.github/workflows/checks.yml`). Merge only
+when it's green.
+
 ## Online: Vercel + Neon
 
 1. **Neon** (neon.tech): create a project in **AWS Europe Central 1 (Frankfurt)** and copy the connection string.

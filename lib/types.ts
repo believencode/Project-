@@ -208,6 +208,15 @@ export interface BackupAnswers {
   notes: string;
 }
 
+/** WhatsApp alerts to the owner when a chat needs a person. */
+export interface AlertSettings {
+  /** The owner's personal WhatsApp number, digits with country code (996555123456). */
+  phone: string;
+  enabled: boolean;
+  /** The owner's app language when they saved it; alerts are written in it. */
+  lang: "ru" | "ky" | "en";
+}
+
 export interface Business {
   id: string;
   sheet: Sheet;
@@ -217,6 +226,7 @@ export interface Business {
   backup?: BackupAnswers;
   /** Who built the sheet from the imported chats: the AI, or demo facts (no AI key). */
   sheet_built_by?: "ai" | "demo";
+  alerts?: AlertSettings;
 }
 
 /** What /api/reply returns for one customer message. */

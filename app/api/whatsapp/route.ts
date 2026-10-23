@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { publicUrl } from "@/lib/url";
 import { NextResponse } from "next/server";
 import { currentBusiness } from "@/lib/session";
 import { connectWhatsApp, setWebhook } from "@/lib/repo";
@@ -7,11 +8,6 @@ import { KapsoError, createWebhook, deleteWebhook, kapsoEnabled, listPhoneNumber
 export const dynamic = "force-dynamic";
 
 /** The app's public address, if it has one: then Kapso pushes messages by webhook instead of the app polling. */
-function publicUrl(): string | null {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return null;
-}
 
 /** Is WhatsApp (Kapso) set up on this server, and which number is this business on? */
 export async function GET() {

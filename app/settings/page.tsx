@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
 import { WhatsAppSettings } from "@/components/WhatsAppSettings";
+import { AlertSettings } from "@/components/AlertSettings";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useT } from "@/lib/i18n/react";
 
@@ -27,6 +28,8 @@ export default function SettingsPage() {
       </div>
 
       <WhatsAppSettings />
+
+      <AlertSettings />
 
       <div className="card stack">
         <h2>{t("kb_title")}</h2>

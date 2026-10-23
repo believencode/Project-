@@ -7,6 +7,7 @@ import { withLock } from "../locks";
 import type { KapsoMessage } from "../kapso";
 import { deliverNew } from "./outbound";
 import { learnFromStaff } from "../learn";
+import { alertIfNeeded } from "../alerts";
 
 /**
  * Server only. What happens with one WhatsApp message, whether it arrived by
@@ -38,8 +39,8 @@ function newWhatsAppChat(waId: string, name?: string): Chat {
 export async function handleInbound(db: Db, row: BusinessRow, m: KapsoMessage) {
   const waId = m.from!;
   const chatId = `wa:${waId}`;
-  await withLock(`${row.id}:${chatId}`, async () => {
-    if (await seenWaMessage(db, m.id)) return;
+  const change = await withLock(`${row.id}:${chatId}`, async () => {
+    if (await seenWaMessage(db, m.id)) return null;
     const before = (await loadChat(db, row.id, chatId)) ?? newWhatsAppChat(waId, m.kapso?.contact_name);
     const text = m.text?.body ?? "";
     const kind = m.type === "text" ? "text" : (KIND[m.type] ?? "photo");
@@ -58,7 +59,10 @@ export async function handleInbound(db: Db, row: BusinessRow, m: KapsoMessage) {
       waId,
       waIds: { ...delivered.waIds, ...(customerMsg ? { [customerMsg.id]: m.id } : {}) },
     });
+    return { before, after: delivered.chat };
   });
+  // Now a person is needed: tell the owner on WhatsApp.
+  if (change) await alertIfNeeded(row, change.before, change.after);
 }
 
 export async function handleStaffEcho(db: Db, row: BusinessRow, m: KapsoMessage) {
