@@ -58,7 +58,7 @@ export default function LivePage() {
 
   // First steps, ticked off as the owner does them; the card goes away when all are done.
   const steps = [
-    { key: "start_wa" as const, done: Boolean(whatsapp), href: "/settings" },
+    { key: "start_wa" as const, done: Boolean(whatsapp), href: "/connect" },
     { key: "start_alerts" as const, done: Boolean(business.alerts?.phone), href: "/settings" },
     { key: "start_test" as const, done: chat.messages.some((m) => m.from === "customer"), href: null },
   ];
@@ -92,7 +92,11 @@ export default function LivePage() {
               <span>
                 <span className={s.done ? "step-done" : "step-todo"} aria-hidden="true">{s.done ? "✓" : "○"}</span> {t(s.key)}
               </span>
-              {!s.done && s.href ? <Link href={s.href} className="btn small">{t("start_open")}</Link> : null}
+              {!s.done && s.href ? (
+                <Link href={s.href} className={s.href === "/connect" ? "btn primary small" : "btn small"}>
+                  {t(s.href === "/connect" ? "start_connect" : "start_open")}
+                </Link>
+              ) : null}
             </div>
           ))}
         </div>

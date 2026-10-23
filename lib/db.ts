@@ -63,6 +63,8 @@ CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (business_id, chat_id, a
 -- Added for webhooks (online hosting).
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS kapso_webhook_id text;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS kapso_webhook_secret text;
+-- The Kapso customer the owner connects their own number through (setup links).
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS kapso_customer_id text;
 `;
 
 interface Querier {

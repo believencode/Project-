@@ -275,3 +275,13 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent);
   table.facts td:first-child { grid-column: 1 / -1; }
   table.facts td:nth-child(2) input { max-width: 140px; }
 }
+
+/* Connecting WhatsApp */
+.check-line { color: var(--ink); }
+.part { display: flex; gap: 10px; align-items: flex-start; }
+.part .badge { flex: none; min-width: 74px; justify-content: center; }
+.steps-list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+.step { display: flex; gap: 10px; align-items: flex-start; }
+.step-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 0.8rem; display: flex; align-items: center; justify-content: center; }
+.success-card { background: var(--accent-soft); border-color: transparent; }
+.success-mark { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }

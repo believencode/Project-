@@ -42,7 +42,8 @@ export default function Home() {
                 onClick={() => {
                   const demo = demoBusiness("shop");
                   setBusiness({ ...demo, sheet: attachSources(demo.sheet, demo.chats), live: true });
-                  router.push("/review");
+                  // A live demo opens on the assistant, like any running business.
+                  router.push("/live");
                 }}
               >
                 {t("home_demo")}

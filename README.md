@@ -54,6 +54,27 @@ classifier labels it `info`, code picks the facts that match (all of them for sm
 
 Code is in `lib/knowledge.ts` (picking facts, open questions) and `lib/learn.ts` (proposing facts from staff answers).
 
+## Connecting an owner's WhatsApp
+
+Owners connect their own **WhatsApp Business app** number themselves, on one phone, and keep using the app
+(Meta "coexistence"). **Ассистент → С чего начать → Подключить** (or Settings → WhatsApp) opens `/connect`: what they
+need, the three parts (browser → WhatsApp Business → browser) and all steps on request. «Начать подключение» creates a
+Kapso **setup link** for the business and opens it in the same tab:
+
+- one Kapso customer per business (`external_customer_id` = our business id, saved as `kapso_customer_id`);
+- the link allows coexistence only and uses Jardamchy's colours; owners pair with the **access code** instead of a QR,
+  so no second screen is needed;
+- after «Finish», Kapso sends them back to `/connect/done`, which connects the number (only a number listed for this
+  business's customer, never another's) and registers the webhook; failures land on `/connect/failed` with the reason
+  in plain words. If they come back another way, Settings → WhatsApp → «Уже подключили? Проверить» finds the number.
+
+Owners only ever see their own number, plus the shared sandbox for trying things out. Who pays Meta's message fees for
+these numbers: `KAPSO_META_BILLING=customer_managed` (default: the owner, only beyond Meta's free 1,000 replies a
+month) or `partner_managed` (Kapso credits). It is fixed per link. Kapso's page asks owners to send a message from the
+app at least every 14 days, or the connection switches off; the guide and the success screen say so.
+
+Code: `lib/whatsapp/connect.ts`, `app/api/whatsapp/{setup,complete}`, `app/connect/`.
+
 ## Alerts to the owner
 
 When a chat starts needing a person (a question the assistant can't answer, off-topic twice, a voice note, a new
@@ -82,7 +103,7 @@ when it's green.
 3. In Vercel → Project → Settings → Environment Variables, add:
    `DATABASE_URL` (from Neon), `LLM_PROVIDER=anthropic`, `LLM_MODEL=claude-haiku-5-5`, `ANTHROPIC_API_KEY`,
    `KAPSO_API_KEY`. Then redeploy.
-4. Open the site, create an account, set up the business, then **Settings → WhatsApp → Connect**. Online, this
+4. Open the site, create an account, set up the business, then **Ассистент → Подключить** (see above). Online, this
    registers a Kapso webhook to `/api/kapso/webhook`; Kapso then pushes each message, signed, and the app answers
    within 10 seconds and replies in the background. Polling is only for local development.
 
