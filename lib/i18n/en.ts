@@ -61,11 +61,13 @@ export const en = {
   err_ai_write: "The AI could not write the message. Try again, or reply to the customer yourself.",
   err_reset_test_only: "Only the test chat can be reset.",
   err_ai_read_chats: "The AI could not read the chats. Try again.",
-  err_number_unknown: "That number isn't in the Kapso project.",
+  err_number_unknown: "That number isn't available to connect.",
   err_number_taken: "That number is already used by another business.",
   err_edit_needs_ai: "Change requests need the AI. In demo mode, use «Edit details by hand».",
   err_edit_failed: "The AI could not read your request. Try again, or use «Edit details by hand».",
   err_connect: "Could not connect.",
+  err_wa_connect: "Couldn't connect the number. Try again.",
+  err_wa_load: "Couldn't load WhatsApp numbers. Try again later.",
 
   // Home
   home_intro:
@@ -409,15 +411,15 @@ export const en = {
   reset_proto: "Reset prototype and start over",
 
   // WhatsApp
-  wa_not_setup: "WhatsApp isn't set up on this server yet (no Kapso API key).",
+  wa_not_setup: "WhatsApp connection isn't available yet. Contact Jardamchy support.",
   wa_info_live: "Customers who write to the connected number get answers from the assistant.",
   wa_info_not_live: "Customers who write to the connected number get answers from the assistant once you go live. Until then their messages wait in the inbox.",
   wa_never_old: "Messages from before the connection are never answered.",
-  wa_no_numbers: "No numbers in the Kapso project yet.",
+  wa_no_numbers: "No numbers available to connect yet.",
   sandbox: "sandbox",
   wa_business_app: "WhatsApp Business app",
   connected: "connected",
-  sandbox_hint: "For testing: write to it from a phone you added in Kapso → WhatsApp → Sandbox.",
+  sandbox_hint: "Test number: write to it from a phone added for testing.",
   connect: "Connect",
   disconnect: "Disconnect",
 
