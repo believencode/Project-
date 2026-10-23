@@ -24,7 +24,7 @@ function script2(type: string): string[] {
 }
 
 export default function LivePage() {
-  const { business, sendCustomer, sendStaff, resetTestChat } = useStore();
+  const { business, whatsapp, sendCustomer, sendStaff, resetTestChat } = useStore();
   const now = useNow();
   const { t } = useT();
   const [text, setText] = useState("");
@@ -56,20 +56,21 @@ export default function LivePage() {
   const botMsg = chat.messages.slice(lastCustomer + 1).find((m) => m.from === "bot");
   const botAfter = botMsg?.text ?? null;
 
+  // First steps, ticked off as the owner does them; the card goes away when all are done.
+  const steps = [
+    { key: "start_wa" as const, done: Boolean(whatsapp), href: "/settings" },
+    { key: "start_alerts" as const, done: Boolean(business.alerts?.phone), href: "/settings" },
+    { key: "start_test" as const, done: chat.messages.some((m) => m.from === "customer"), href: null },
+  ];
+
   return (
     <main className="page">
-      <div className="card row between">
-        <div className="row">
-          <span className="status-dot" />
-          <div>
+      <div className="card">
+        <div className="row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+          <span className="status-dot" style={{ marginTop: 8 }} />
+          <div className="stack" style={{ minWidth: 0 }}>
             <h1 style={{ margin: 0 }}>{t("live_title")}</h1>
-            {mode ? (
-              mode.ai ? (
-                <span className="badge ok wrap">{t("ai_badge")}</span>
-              ) : (
-                <span className="badge check wrap">{t("demo_badge")}</span>
-              )
-            ) : null}
+            {mode ? <span className={`badge wrap ${mode.ai ? "ok" : "check"}`}>{t(mode.ai ? "ai_badge" : "demo_badge")}</span> : null}
             <span className="muted small">
               {t("live_stats", {
                 name: business.sheet.name,
@@ -78,43 +79,33 @@ export default function LivePage() {
                 need: business.chats.filter((c) => c.needs_person).length,
               })}
             </span>
+            <Link href="/inbox" className="btn primary">{t("open_inbox")}</Link>
           </div>
         </div>
-        <Link href="/inbox" className="btn primary">{t("open_inbox")}</Link>
       </div>
+
+      {steps.some((s) => !s.done) ? (
+        <div className="card stack">
+          <h2>{t("start_title")}</h2>
+          {steps.map((s) => (
+            <div key={s.key} className="row between" style={{ flexWrap: "nowrap" }}>
+              <span>
+                <span className={s.done ? "step-done" : "step-todo"} aria-hidden="true">{s.done ? "✓" : "○"}</span> {t(s.key)}
+              </span>
+              {!s.done && s.href ? <Link href={s.href} className="btn small">{t("start_open")}</Link> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid2">
         <div className="card stack">
           <h2>{t("test_box")}</h2>
           <p className="muted small">{t("test_hint")}</p>
 
-          <div className="script row">
-            {script(business.sheet.type, business.sheet.prices[0]?.item).map((s, i) => (
-              <button key={s} onClick={() => send(s)} disabled={busy}>
-                {i + 1}. {s}
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <div className="small muted" style={{ marginBottom: 6 }}>{t("memory_hint")}</div>
-            <div className="script row">
-              {script2(business.sheet.type).map((s, i) => (
-                <button key={s} onClick={() => send(s)} disabled={busy}>
-                  {String.fromCharCode(97 + i)}. {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="row" style={{ flexWrap: "nowrap" }}>
             <input type="text" value={text} placeholder={t("customer_ph")} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(text)} />
             <button className="primary" onClick={() => send(text)} disabled={busy || !text.trim()}>{t("send")}</button>
-          </div>
-
-          <div className="row">
-            <button onClick={() => sendStaff(chat.id, "Здравствуйте! Сейчас уточню.", "echo")}>{t("staff_reply_phone")}</button>
-            <button className="ghost" onClick={() => { resetTestChat(); setLast(null); }}>{t("reset_test")}</button>
           </div>
 
           {last ? (
@@ -122,9 +113,24 @@ export default function LivePage() {
               <div>
                 <span className="muted small">{t("message")} </span>«{last.text}»
               </div>
+              <div>
+                <span className="muted small">{t("reply")} </span>
+                {last.decision ? (
+                  botAfter ?? <em className="muted">{t("no_reply_ai_stopped")}</em>
+                ) : (
+                  <span className="muted">{t(paused ? "staff_has_chat" : chat.needs_person?.reason === "AI unavailable" ? "ai_unreachable" : "no_reply")}</span>
+                )}
+                {botMsg?.written_by ? (
+                  <span className={botMsg.written_by === "ai" ? "badge ok" : "badge plain"} style={{ marginLeft: 6 }}>
+                    {t(botMsg.written_by === "ai" ? "written_by_ai" : "fixed_line")}
+                  </span>
+                ) : null}
+              </div>
+              {(chat.requests?.length ?? 0) > last.requestsBefore ? <span className="badge ok">{t("request_created")}</span> : null}
               {last.decision ? (
-                <>
-                  <div className="row">
+                <details>
+                  <summary className="small muted">{t("why_reply")}</summary>
+                  <div className="row" style={{ marginTop: 6 }}>
                     <span className="badge info">{t("label_is", { label: t(`label_${last.decision.label}`) })}</span>
                     <span className="badge plain">{t("off_topic_n", { n: chat.off_topic_count })}</span>
                     {last.decision.missing ? <span className="badge check">{t("missing_answer")}</span> : null}
@@ -135,29 +141,34 @@ export default function LivePage() {
                         {t("collecting", { kind: t(`kind_${chat.draft.kind}`), slot: chat.draft.asked ? t(SLOT[chat.draft.asked]) : "—" })}
                       </span>
                     ) : null}
-                    {(chat.requests?.length ?? 0) > last.requestsBefore ? <span className="badge ok">{t("request_created")}</span> : null}
                   </div>
-                  <div>
-                    <span className="muted small">{t("reply")} </span>
-                    {botAfter ?? <em className="muted">{t("no_reply_ai_stopped")}</em>}
-                    {botMsg?.written_by ? (
-                      <span className={botMsg.written_by === "ai" ? "badge ok" : "badge plain"} style={{ marginLeft: 6 }}>
-                        {t(botMsg.written_by === "ai" ? "written_by_ai" : "fixed_line")}
-                      </span>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <span className="badge info">{t("not_classified")}</span>{" "}
-                  <span className="muted">{t(paused ? "staff_has_chat" : chat.needs_person?.reason === "AI unavailable" ? "ai_unreachable" : "no_reply")}</span>
-                </div>
-              )}
+                </details>
+              ) : null}
             </div>
           ) : null}
+
+          <details>
+            <summary className="small muted">{t("examples")}</summary>
+            <div className="stack" style={{ marginTop: 8 }}>
+              <div className="script row">
+                {script(business.sheet.type, business.sheet.prices[0]?.item).map((s) => (
+                  <button key={s} onClick={() => send(s)} disabled={busy}>{s}</button>
+                ))}
+              </div>
+              <div className="small muted">{t("memory_hint")}</div>
+              <div className="script row">
+                {script2(business.sheet.type).map((s, i) => (
+                  <button key={s} onClick={() => send(s)} disabled={busy}>{i + 1}. {s}</button>
+                ))}
+              </div>
+              <button onClick={() => sendStaff(chat.id, "Здравствуйте! Сейчас уточню.", "echo")}>{t("staff_reply_phone")}</button>
+            </div>
+          </details>
+
+          <button className="ghost" onClick={() => { resetTestChat(); setLast(null); }}>{t("reset_test")}</button>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 480, background: "var(--chat-bg)" }}>
+        <div className="card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 420, background: "var(--chat-bg)" }}>
           <ChatThread chat={chat} composer={false} />
         </div>
       </div>

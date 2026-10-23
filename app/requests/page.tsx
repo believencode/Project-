@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
 import { useT } from "@/lib/i18n/react";
+import { customerName } from "@/components/ChatThread";
 
 const STATUS = { pending: "badge check", confirmed: "badge ok", declined: "badge plain" } as const;
 
@@ -31,7 +32,7 @@ export default function RequestsPage() {
                   <div className="small muted">{t(r.kind === "order" ? "kind_order_title" : "kind_booking_title")} · {new Date(r.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
                   <div className="value">{r.summary}</div>
                   <div className="small">
-                    <Link href={`/inbox?chat=${encodeURIComponent(chat.id)}`}>{chat.customer}</Link>{" "}
+                    <Link href={`/inbox?chat=${encodeURIComponent(chat.id)}`}>{customerName(chat, t)}</Link>{" "}
                     <span className="muted">{chat.phone === "test" ? t("test_number") : chat.phone}</span>
                     {chat.is_whatsapp ? <span className="badge wa-badge" style={{ marginLeft: 6 }}>WhatsApp</span> : null}
                   </div>

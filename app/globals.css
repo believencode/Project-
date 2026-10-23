@@ -92,7 +92,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .between { justify-content: space-between; }
 .stack > * + * { margin-top: 0.75rem; }
 
-input[type="text"], input[type="number"], textarea, select {
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="tel"], textarea, select {
   font: inherit; width: 100%; padding: 0.55rem 0.7rem; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
 }
@@ -221,4 +221,57 @@ input, textarea, select { font-size: 16px; } /* no zoom-on-focus on iPhone */
 html, body { overflow-x: hidden; }
 
 /* Language switch in the top bar */
-.lang-select { width: auto; padding: 0.3rem 0.4rem; font-size: 0.85rem; border-radius: 6px; background: var(--card, transparent); }
+.lang-select { width: auto; min-height: 36px; padding: 0.3rem 0.5rem; font-size: 0.9rem; border-radius: 8px; }
+
+/* Phones: tabs move to a bar at the bottom, like messenger apps; the top bar keeps one row. */
+.tabbar { display: none; }
+.back-to-list { display: none; }
+@media (max-width: 760px) {
+  .topbar .nav { display: none; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabbar a {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 58px; padding: 4px 2px; text-decoration: none; color: var(--muted);
+    font-size: 0.75rem; line-height: 1.1; text-align: center;
+  }
+  .tabbar a svg { width: 22px; height: 22px; }
+  .tabbar a.active { color: var(--accent); font-weight: 600; }
+  .tabbar .dot {
+    position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; font-size: 0.7rem; line-height: 18px; color: #fff; background: var(--alert);
+  }
+  body.with-tabs { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+
+  /* Chats: the list, or one chat full screen with a way back. */
+  .inbox { display: block; }
+  .inbox .list { max-height: none; }
+  .inbox.has-chat .list { display: none; }
+  .inbox:not(.has-chat) .thread { display: none; }
+  .inbox .thread { min-height: calc(100dvh - 60px - 60px); }
+  .back-to-list { display: inline-flex; }
+}
+.composer-hint { padding: 0 1rem 0.6rem; background: var(--panel); }
+.step-done { color: var(--accent); font-weight: 700; display: inline-block; width: 1.2em; }
+.step-todo { color: var(--muted); display: inline-block; width: 1.2em; }
+details > summary { cursor: pointer; padding: 0.35rem 0; }
+
+/* Phones: comfortable sizes, and the price table as one small card per item. */
+input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.bubble .meta { font-size: 0.75rem; }
+@media (max-width: 760px) {
+  button, .btn { min-height: 40px; }
+  table.facts thead { display: none; }
+  table.facts, table.facts tbody, table.facts tr, table.facts td { display: block; width: 100%; }
+  table.facts tr {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--line);
+  }
+  table.facts td { padding: 0; border: 0; }
+  table.facts td:first-child { grid-column: 1 / -1; }
+  table.facts td:nth-child(2) input { max-width: 140px; }
+}

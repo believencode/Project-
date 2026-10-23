@@ -54,6 +54,27 @@ classifier labels it `info`, code picks the facts that match (all of them for sm
 
 Code is in `lib/knowledge.ts` (picking facts, open questions) and `lib/learn.ts` (proposing facts from staff answers).
 
+## Alerts to the owner
+
+When a chat starts needing a person (a question the assistant can't answer, off-topic twice, a voice note, a new
+booking or order, the AI unavailable), the owner gets a WhatsApp message on their personal number: who is waiting,
+what they asked, and a link straight to the chat. The owner sets the number in **Settings → Alerts** and can send a
+test. One alert per change, not one per message.
+
+- Without a template, the alert is a plain WhatsApp message, which WhatsApp only delivers if the owner's number wrote
+  to the sending number in the last 24 hours. Good for testing.
+- For production, create a **Utility** template in Kapso (WhatsApp → Templates), e.g. named `needs_person`, Russian
+  body `Клиент {{1}} ждёт ответа: «{{2}}». Ответить: {{3}}` (optionally a Kyrgyz version), and once Meta approves it
+  set `ALERT_TEMPLATE=needs_person`. Templates are delivered at any time; each costs a small fee.
+- `ALERT_PHONE_NUMBER_ID` sends alerts from one Jardamchy number instead of each business's own number.
+
+Code: `lib/alerts.ts`, `app/api/alerts`, `components/AlertSettings.tsx`.
+
+## Checks
+
+Every pull request runs the type check, the tests and the build on GitHub (`.github/workflows/checks.yml`). Merge only
+when it's green.
+
 ## Online: Vercel + Neon
 
 1. **Neon** (neon.tech): create a project in **AWS Europe Central 1 (Frankfurt)** and copy the connection string.
@@ -99,22 +120,23 @@ Production will receive Kapso webhooks instead of polling.
 
 ## Demo script
 
-0. Open the app and **create an account** (email and password).
-1. **Set up a business** → name → **Shop** → **I scanned it** → **Share 6 months**.
-2. Answer the questions one by one: confirm a price (with the chat message it came from), pick the current price of
-   the loafers (5200 newest vs 5000 older), confirm stock, hours and address. Check the summary, then
-   **Approve and go live**. With an AI key, try «Something wrong or missing?» to change facts in your own words.
-3. On **Live**, tap the scripted messages 1–5: greeting (count stays 0), price, size → `availability`,
-   two off-topic messages → handoff, AI stops, chat shows **Needs a person**.
-4. **6. Staff reply** pauses only the test chat. The next customer message gets no bot reply.
-5. **Inbox**: other chats still get bot replies (use the "message from this customer" box).
-   On the test chat, **Skip 30 min** ends the pause and the bot answers again.
-6. Back on **Live**, tap the second row **a–d**: a price question, then «а 42 есть?» (memory), then
-   «Хочу заказать» → «Какой размер нужен?» → «42». A request appears; confirm it under **Requests** and the bot
-   tells the customer.
+The app opens in Russian; button names below are the Russian ones.
 
-Pick **Café** in setup for the café fixture (lagman 250 сом). **Skip** sharing to go through the backup questions,
-including the basic-facts screen.
+0. Open the app and **create an account** (Создать аккаунт).
+1. **Настроить бизнес** → name → **Магазин** → **Поделиться за 6 месяцев** (for now the AI reads example chats).
+2. Answer the questions one by one: confirm a price (with the chat message it came from), pick the current price of
+   the loafers (5200 newest vs 5000 older), confirm stock, delivery, hours and address. Check the summary, then
+   **Подтвердить и запустить**. Try «Что-то не так…?» to change facts in your own words.
+3. On **Ассистент**, the «С чего начать» checklist shows what's left: connect the WhatsApp number and add a number
+   for alerts (both in Settings), then send a test message. Open **Примеры сообщений** for the scripted messages:
+   greeting, price, size, two off-topic messages → handoff, the chat shows «Нужен сотрудник».
+4. **Имитировать ответ сотрудника с телефона** pauses only the test chat; the next customer message gets no reply.
+5. **Чаты**: open the test chat; **Пропустить 30 мин** ends the pause and the assistant answers again.
+6. Back on **Ассистент**, run the numbered examples: a price question, «а 42 есть?» (memory), «Хочу заказать» →
+   «42». A request appears; confirm it under **Заявки** and the assistant tells the customer.
+
+Pick **Кафе** in setup for the café fixture (lagman 250 сом). **Пропустить** sharing to go through the backup
+questions, including the basic-facts screen.
 
 ## Layout
 

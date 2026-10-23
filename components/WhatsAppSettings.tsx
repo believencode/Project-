@@ -51,7 +51,7 @@ export function WhatsAppSettings() {
           <p className="muted">
             {t(business?.live ? "wa_info_live" : "wa_info_not_live")} {t("wa_never_old")}
           </p>
-          {info.error ? <div className="notice warn small" style={{ margin: 0 }}>{info.error}</div> : null}
+          {info.error ? <div className="notice warn small" style={{ margin: 0 }}>{tError(info.error)}</div> : null}
           {info.numbers.length === 0 ? <p className="muted">{t("wa_no_numbers")}</p> : null}
           {info.numbers.map((n) => {
             const on = info.connected === n.id;

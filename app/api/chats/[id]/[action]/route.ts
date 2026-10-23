@@ -10,6 +10,7 @@ import { testChat } from "@/lib/fixtures";
 import { withLock } from "@/lib/locks";
 import { deliverNew } from "@/lib/whatsapp/outbound";
 import { learnFromStaff } from "@/lib/learn";
+import { alertIfNeeded } from "@/lib/alerts";
 
 // AI calls can take several seconds.
 export const maxDuration = 60;
@@ -52,6 +53,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (typeof body.text !== "string") return NextResponse.json({ error: "text required" }, { status: 400 });
         const r = await runTurn(before, sheet, body.text, body.kind ?? "text", now);
         after = r.chat;
+        // A person is needed now: tell the owner on WhatsApp, once the reply is sent.
+        const turned = r.chat;
+        afterResponse(() => alertIfNeeded(row, before, turned).then(() => undefined));
         // Which AI model answered stays on the server.
         extra = { decision: r.decision && { ...r.decision, model: undefined }, ai_error: r.ai_error };
         break;

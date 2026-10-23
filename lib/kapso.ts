@@ -107,6 +107,27 @@ export async function sendText(phoneNumberId: string, to: string, body: string):
   return res.messages?.[0]?.id;
 }
 
+/**
+ * A Meta-approved template message: the only kind WhatsApp delivers to someone who hasn't
+ * written to this number in the last 24 hours. `params` fill {{1}}, {{2}}… in the body.
+ */
+export async function sendTemplate(phoneNumberId: string, to: string, name: string, language: string, params: string[]): Promise<string | undefined> {
+  const res = await call<{ messages?: { id: string }[] }>(`${WHATSAPP_API}/${phoneNumberId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name,
+        language: { code: language },
+        components: [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }],
+      },
+    }),
+  });
+  return res.messages?.[0]?.id;
+}
+
 const WEBHOOK_EVENTS = ["whatsapp.message.received", "whatsapp.message.sent"];
 
 /** Ask Kapso to push this number's messages to `url`, signed with `secret`. Returns the webhook id. */

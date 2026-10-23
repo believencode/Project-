@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { demoBusiness, useStore } from "@/lib/store";
 import { attachSources } from "@/lib/sources";
@@ -10,7 +11,12 @@ export default function Home() {
   const { ready, business, setBusiness } = useStore();
   const router = useRouter();
   const { t } = useT();
-  if (!ready) return null;
+  // A business that is already answering: go straight to it.
+  const live = Boolean(business?.live);
+  useEffect(() => {
+    if (ready && live) router.replace("/live");
+  }, [ready, live, router]);
+  if (!ready || live) return null;
 
   return (
     <main className="page narrow">
@@ -18,32 +24,33 @@ export default function Home() {
         <h1>Jardamchy</h1>
         <p>{t("home_intro")}</p>
         {business ? (
-          <div className="notice">
-            <strong>{business.sheet.name}</strong> {t(business.live ? "home_is_live" : "home_not_live")}{" "}
-            <Link href={business.live ? "/live" : "/setup"}>{t(business.live ? "home_open" : "home_continue")}</Link>
-          </div>
-        ) : null}
-        <div className="row">
-          <button
-            className="primary"
-            onClick={() => {
-              setBusiness(null);
-              router.push("/setup");
-            }}
-          >
-            {t("home_setup")}
-          </button>
-          <button
-            onClick={() => {
-              const demo = demoBusiness("shop");
-              setBusiness({ ...demo, sheet: attachSources(demo.sheet, demo.chats), live: true });
-              router.push("/review");
-            }}
-          >
-            {t("home_demo")}
-          </button>
-        </div>
-        <p className="muted small">{t("home_note")}</p>
+          // Setup was started but not finished. Starting over is in Settings, behind a confirmation,
+          // so one tap here can never delete the business.
+          <>
+            <div className="notice">
+              <strong>{business.sheet.name}</strong> {t("home_not_live")}
+            </div>
+            <Link className="btn primary" href="/review">{t("home_continue")}</Link>
+          </>
+        ) : (
+          <>
+            <div className="row">
+              <button className="primary" onClick={() => router.push("/setup")}>
+                {t("home_setup")}
+              </button>
+              <button
+                onClick={() => {
+                  const demo = demoBusiness("shop");
+                  setBusiness({ ...demo, sheet: attachSources(demo.sheet, demo.chats), live: true });
+                  router.push("/review");
+                }}
+              >
+                {t("home_demo")}
+              </button>
+            </div>
+            <p className="muted small">{t("home_note")}</p>
+          </>
+        )}
       </div>
     </main>
   );

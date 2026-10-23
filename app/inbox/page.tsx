@@ -1,9 +1,9 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useNow, useStore } from "@/lib/store";
-import { ChatBadges, ChatThread } from "@/components/ChatThread";
+import { ChatBadges, ChatThread, customerName } from "@/components/ChatThread";
 import { NeedsBusiness } from "@/components/NeedsBusiness";
 import type { NeedsPerson } from "@/lib/types";
 import { useT } from "@/lib/i18n/react";
@@ -11,9 +11,12 @@ import { useT } from "@/lib/i18n/react";
 function Inbox() {
   const { business, open, sendCustomer } = useStore();
   const params = useSearchParams();
+  const router = useRouter();
   const { t } = useT();
   const now = useNow();
-  const [selected, setSelected] = useState<string | null>(params.get("chat"));
+  // The open chat lives in the address, so the phone's back button returns to the list.
+  const selected = params.get("chat");
+  const open_ = (id: string | null) => router.push(id ? `/inbox?chat=${encodeURIComponent(id)}` : "/inbox");
   // What the chat was waiting for when staff opened it, so the reason stays visible.
   const [seen, setSeen] = useState<{ chatId: string; flag: NeedsPerson } | null>(null);
 
@@ -28,20 +31,20 @@ function Inbox() {
   if (!business) return <NeedsBusiness />;
 
   return (
-    <div className="inbox">
+    <div className={`inbox ${current ? "has-chat" : ""}`}>
       <div className="list">
         {sorted.map((c) => {
           const last = [...c.messages].reverse().find((m) => m.from !== "system");
           return (
             <button key={c.id} className={`chat-item ${c.id === selected ? "on" : ""}`} onClick={() => {
                 // Opening a chat means staff have seen it: clear "Needs a person".
-                setSelected(c.id);
+                open_(c.id);
                 setSeen(c.needs_person ? { chatId: c.id, flag: c.needs_person } : null);
                 if (c.needs_person) void open(c.id);
               }}>
               <div className="top">
                 <span>
-                  {c.customer}
+                  {customerName(c, t)}
                   {c.is_whatsapp ? <span className="badge wa-badge" style={{ marginLeft: 6 }}>WhatsApp</span> : null}
                 </span>
                 <span className="muted small">{last ? new Date(last.at).toLocaleDateString("ru-RU") : ""}</span>
@@ -57,8 +60,9 @@ function Inbox() {
       <div className="thread">
         {current ? (
           <>
-            <ChatThread chat={current} seen={seen?.chatId === current.id ? seen.flag : null} />
-            {current.is_whatsapp ? null : (
+            <ChatThread chat={current} seen={seen?.chatId === current.id ? seen.flag : null} onBack={() => open_(null)} />
+            {/* Demo only: write as the test customer. Real chats are written by real customers. */}
+            {!current.is_test ? null : (
               <SimulateCustomer onSend={(t) => void sendCustomer(current.id, t)} onVoice={() => void sendCustomer(current.id, "", "voice")} />
             )}
           </>

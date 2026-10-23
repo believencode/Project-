@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { publicUrl } from "@/lib/url";
 import { NextResponse } from "next/server";
 import { currentBusiness } from "@/lib/session";
 import { connectWhatsApp, setWebhook } from "@/lib/repo";
@@ -7,11 +8,6 @@ import { KapsoError, createWebhook, deleteWebhook, kapsoEnabled, listPhoneNumber
 export const dynamic = "force-dynamic";
 
 /** The app's public address, if it has one: then Kapso pushes messages by webhook instead of the app polling. */
-function publicUrl(): string | null {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return null;
-}
 
 /** Is WhatsApp (Kapso) set up on this server, and which number is this business on? */
 export async function GET() {
@@ -28,7 +24,9 @@ export async function GET() {
       numbers: numbers.map((n) => ({ id: n.phone_number_id, name: n.display_name, sandbox: n.kind === "sandbox", business_app: n.is_coexistence })),
     });
   } catch (err) {
-    return NextResponse.json({ available: true, mode, connected: ctx.row.kapso_phone_number_id, numbers: [], error: err instanceof KapsoError ? err.message : String(err) });
+    // The provider's own error stays in the log; owners see a plain message.
+    console.error("Could not list WhatsApp numbers:", err instanceof KapsoError ? err.message : err);
+    return NextResponse.json({ available: true, mode, connected: ctx.row.kapso_phone_number_id, numbers: [], error: "Couldn't load WhatsApp numbers. Try again later." });
   }
 }
 
@@ -40,7 +38,7 @@ export async function POST(req: Request) {
   const { id } = (await req.json()) as { id: string | null };
   if (id) {
     const numbers = await listPhoneNumbers().catch(() => []);
-    if (!numbers.some((n) => n.phone_number_id === id)) return NextResponse.json({ error: "That number isn't in the Kapso project." }, { status: 400 });
+    if (!numbers.some((n) => n.phone_number_id === id)) return NextResponse.json({ error: "That number isn't available to connect." }, { status: 400 });
     const [taken] = await db.query("SELECT 1 FROM businesses WHERE kapso_phone_number_id = $1 AND id <> $2", [id, row.id]);
     if (taken) return NextResponse.json({ error: "That number is already used by another business." }, { status: 409 });
   }
@@ -60,8 +58,8 @@ export async function POST(req: Request) {
       await setWebhook(db, row.id, { id: webhookId, secret });
     } catch (err) {
       await connectWhatsApp(db, row.id, null);
-      const msg = err instanceof KapsoError ? err.message : String(err);
-      return NextResponse.json({ error: `Kapso didn't accept the webhook: ${msg}` }, { status: 502 });
+      console.error("Kapso didn't accept the webhook:", err instanceof KapsoError ? err.message : err);
+      return NextResponse.json({ error: "Couldn't connect the number. Try again." }, { status: 502 });
     }
   }
   return NextResponse.json({ ok: true });

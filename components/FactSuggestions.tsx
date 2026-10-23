@@ -5,6 +5,7 @@ import type { Chat, FactSuggestion } from "@/lib/types";
 import { pendingSuggestions } from "@/lib/knowledge";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n/react";
+import { customerName } from "./ChatThread";
 
 /** Answers staff gave to questions the bot couldn't answer, offered as facts for the knowledge base. */
 export function FactSuggestions() {
@@ -40,7 +41,7 @@ function SuggestionCard({ chat, s }: { chat: Chat; s: FactSuggestion }) {
   return (
     <div className="fact stack">
       <div className="small">
-        <span className="muted">{t("asked", { name: chat.customer })}</span> «{s.question}»
+        <span className="muted">{t("asked", { name: customerName(chat, t) })}</span> «{s.question}»
       </div>
       <div className="small">
         <span className="muted">{t("staff_answered")}</span> «{s.answer}»
