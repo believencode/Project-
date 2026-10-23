@@ -39,7 +39,7 @@ export const en = {
   // Login
   login_title: "Log in",
   signup_title: "Create your account",
-  login_tagline: "Kapso Desk answers your WhatsApp customers with AI, from facts you approve.",
+  login_tagline: "Jardamchy answers your WhatsApp customers with AI, from facts you approve.",
   email: "Email",
   password: "Password",
   password_min: " (at least 8 characters)",

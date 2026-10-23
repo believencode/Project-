@@ -8,7 +8,7 @@ This is for any small business, not only shoes. A Bishkek owner connects their e
 
 The shoe shop is demo data so the review screen is not empty. The same wizard must work for a café, salon, clinic, or service.
 
-Working name: Kapso Desk. Language of the UI: Russian, with Kyrgyz as a later pass. Prototype UI can be English if faster, but every message the bot sends must be in Russian, including the fixed lines below.
+Name: Jardamchy (Kyrgyz «жардамчы», helper). Language of the UI: Russian, with Kyrgyz as a later pass. Prototype UI can be English if faster, but every message the bot sends must be in Russian, including the fixed lines below.
 
 ## Out of scope for this prototype
 

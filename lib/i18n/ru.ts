@@ -34,7 +34,7 @@ export const ru: Record<Key, string> = {
 
   login_title: "Вход",
   signup_title: "Создайте аккаунт",
-  login_tagline: "Kapso Desk отвечает вашим клиентам в WhatsApp с помощью ИИ — только по фактам, которые вы подтвердили.",
+  login_tagline: "Jardamchy отвечает вашим клиентам в WhatsApp с помощью ИИ — только по фактам, которые вы подтвердили.",
   email: "Эл. почта",
   password: "Пароль",
   password_min: " (не меньше 8 символов)",

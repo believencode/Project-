@@ -34,7 +34,7 @@ export const ky: Record<Key, string> = {
 
   login_title: "Кирүү",
   signup_title: "Аккаунт түзүңүз",
-  login_tagline: "Kapso Desk WhatsApp'тагы кардарларыңызга жасалма интеллект (ЖИ) менен жооп берет — сиз ырастаган маалыматтар боюнча гана.",
+  login_tagline: "Jardamchy WhatsApp'тагы кардарларыңызга жасалма интеллект (ЖИ) менен жооп берет — сиз ырастаган маалыматтар боюнча гана.",
   email: "Электрондук почта",
   password: "Сырсөз",
   password_min: " (кеминде 8 белги)",

@@ -10,7 +10,7 @@ import { LangProvider } from "@/lib/i18n/react";
 export const viewport = { width: "device-width", initialScale: 1 };
 
 export const metadata: Metadata = {
-  title: "Kapso Desk",
+  title: "Jardamchy",
   description: "WhatsApp Business AI assistant",
 };
 

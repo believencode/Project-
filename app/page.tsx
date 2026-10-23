@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <main className="page narrow">
       <div className="card stack">
-        <h1>Kapso Desk</h1>
+        <h1>Jardamchy</h1>
         <p>{t("home_intro")}</p>
         {business ? (
           <div className="notice">
