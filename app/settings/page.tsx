@@ -9,6 +9,7 @@ import { WhatsAppSettings } from "@/components/WhatsAppSettings";
 import { AlertSettings } from "@/components/AlertSettings";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useT } from "@/lib/i18n/react";
+import { isImported } from "@/lib/sources";
 
 export default function SettingsPage() {
   const { business, deleteImportedChats, setBusiness } = useStore();
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const { t } = useT();
   if (!business) return <NeedsBusiness />;
-  const imported = business.chats.filter((c) => !c.is_test).length;
+  const imported = business.chats.filter(isImported).length;
 
   return (
     <main className="page narrow">

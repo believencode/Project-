@@ -38,7 +38,7 @@ export default function LivePage() {
   if (!business) return <NeedsBusiness />;
   const chat = business.chats.find((c) => c.is_test);
   if (!chat) return null;
-  const others = business.chats.filter((c) => !c.is_test);
+  const others = business.chats.filter((c) => !c.is_test && !c.imported);
   const paused = isPaused(chat, now);
 
   const send = async (t: string) => {

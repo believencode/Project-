@@ -1,5 +1,5 @@
 import type { BotIntent, Chat, Message, Sheet } from "./types";
-import { OFF_TOPIC_TOPICS } from "./copy";
+import { OFF_TOPIC_TOPICS, businessLine } from "./copy";
 import { checkMessage } from "./guard";
 import { jsonCall, languageRule } from "./llm";
 import { historyOf } from "./engine";
@@ -58,7 +58,7 @@ async function writeOne(intent: BotIntent, sheet: Sheet, chat: Chat, customerTex
     .join("\n");
   const { text } = await jsonCall<{ text: string }>(
     WRITER_SYSTEM,
-    `<business>${sheet.name}</business>
+    `<business>${businessLine(sheet)}</business>
 <staff_examples>${sheet.tone_examples.join("\n")}</staff_examples>
 <language>${languageRule(sheet, customerTexts.at(-1) ?? "")}</language>
 <conversation>\n${history}\n</conversation>

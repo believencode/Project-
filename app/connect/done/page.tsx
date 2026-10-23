@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n/react";
+import { HistoryImport } from "@/components/HistoryImport";
 
 type State = { kind: "checking" } | { kind: "connected"; phone: string | null; name: string | null } | { kind: "pending" } | { kind: "error"; text: string };
 
@@ -54,7 +55,8 @@ function Done() {
           <p className="muted" style={{ margin: 0 }}>{t("done_body")}</p>
         </div>
         <div className="notice small">{t("connect_14days")}</div>
-        <Link href="/live" className="btn primary block">{t("done_next")}</Link>
+        <HistoryImport />
+        <Link href="/live" className="btn block">{t("done_next")}</Link>
       </main>
     );
   }

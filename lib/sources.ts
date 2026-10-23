@@ -115,6 +115,9 @@ function factSource(text: string, located: Located[]): Located | undefined {
     .sort((a, b) => b.score - a.score || newestFirst(a.l, b.l))[0]?.l;
 }
 
+/** Chats read for facts rather than answered: shared WhatsApp history, or the demo's example chats. */
+export const isImported = (c: Chat) => c.imported === true || (!c.is_test && !c.is_whatsapp);
+
 export function attachSources(sheet: Sheet, chats: Chat[]): Sheet {
   const located = allMessages(chats);
   const items = sheet.prices.map((p) => p.item);

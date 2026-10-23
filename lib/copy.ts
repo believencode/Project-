@@ -1,4 +1,4 @@
-import type { BusinessType, Topic } from "./types";
+import type { BusinessType, Sheet, Topic } from "./types";
 
 /** Fixed bot lines. Every message the bot sends is Russian. */
 export const MISSING_ANSWER_LINE = "Сотрудник уточнит и ответит вам.";
@@ -10,11 +10,16 @@ export const OFF_TOPIC_TOPICS: Record<BusinessType, string> = {
   salon: "цены, запись, свободное время, адрес и часы работы",
   clinic: "цены, запись, свободное время, адрес и часы работы",
   services: "цены, заказ, сроки, адрес и часы работы",
-  other: "цены, адрес и часы работы",
+  other: "цены, заказы и запись, адрес и часы работы",
 };
 
 export function offTopicLine(type: BusinessType): string {
   return `Я могу помочь только с вопросами про ${OFF_TOPIC_TOPICS[type]}. Если нужно что-то другое, вам ответит сотрудник.`;
+}
+
+/** Who the AI is talking for: the name, and what the business does when the owner said. */
+export function businessLine(sheet: Sheet): string {
+  return sheet.about?.trim() ? `${sheet.name} (${sheet.about.trim()})` : sheet.name;
 }
 
 export const BUSINESS_TYPES: { id: BusinessType; label: string }[] = [

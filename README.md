@@ -22,7 +22,7 @@ By default the bot classifies and replies with keyword rules. To use an AI model
 
 `LLM_MODEL` overrides the model (for example a pinned Gemini version).
 
-With an AI key, the AI reads the imported chats to build the knowledge base and writes every bot message in the
+With an AI key, the AI reads the owner's shared WhatsApp chats to propose knowledge-base facts and writes every bot message in the
 customer's language; a guard blocks any message with a number that isn't a confirmed fact. If the AI can't be
 reached, the bot sends nothing and the chat goes to a person. Without a key the app runs in demo mode (keyword rules
 and fixed lines, labelled "fixed line"). Counts, pauses, handoffs and booking/order requests stay in code either way.
@@ -74,6 +74,17 @@ month) or `partner_managed` (Kapso credits). It is fixed per link. Kapso's page 
 app at least every 14 days, or the connection switches off; the guide and the success screen say so.
 
 Code: `lib/whatsapp/connect.ts`, `app/api/whatsapp/{setup,complete}`, `app/connect/`.
+
+### Learning from the owner's old chats
+
+When connecting, WhatsApp asks whether to **share chat history** (up to about 6 months, one-to-one chats; the choice
+can't be changed later). Kapso keeps the shared chats as messages marked `history_sync`. After connecting, the success
+screen and Settings → WhatsApp offer «Изучить чаты»: `POST /api/whatsapp/history` copies them in as imported chats
+(`hist:<number>`, never answered, hidden from Чаты), the AI reads them, and anything new (prices, notes, facts, empty
+hours or address) is added to the knowledge base as **to check** — the assistant uses nothing until the owner confirms
+it. The owner's own facts are never changed. «Прочитать снова» re-reads without duplicates; Settings → Delete imported
+chats removes them and keeps live WhatsApp chats. WhatsApp can take a few minutes to send the history; until then the
+card says so. Code: `lib/whatsapp/history.ts`.
 
 ## Alerts to the owner
 
@@ -144,10 +155,11 @@ Production will receive Kapso webhooks instead of polling.
 The app opens in Russian; button names below are the Russian ones.
 
 0. Open the app and **create an account** (Создать аккаунт).
-1. **Настроить бизнес** → name → **Магазин** → **Поделиться за 6 месяцев** (for now the AI reads example chats).
-2. Answer the questions one by one: confirm a price (with the chat message it came from), pick the current price of
-   the loafers (5200 newest vs 5000 older), confirm stock, delivery, hours and address. Check the summary, then
-   **Подтвердить и запустить**. Try «Что-то не так…?» to change facts in your own words.
+1. **Настроить бизнес** → name → **Магазин** → the old-chats step explains they're read after connecting WhatsApp →
+   answer the questions (what customers ask, hours, address, prices…).
+2. Check the summary, then **Подтвердить и запустить**. Try «Что-то не так…?» to change facts in your own words.
+   (**Открыть демо: обувной магазин** on the start page instead opens a shop whose facts were read from example
+   chats, each with the chat message it came from, under **Знания**.)
 3. On **Ассистент**, the «С чего начать» checklist shows what's left: connect the WhatsApp number and add a number
    for alerts (both in Settings), then send a test message. Open **Примеры сообщений** for the scripted messages:
    greeting, price, size, two off-topic messages → handoff, the chat shows «Нужен сотрудник».
@@ -156,8 +168,7 @@ The app opens in Russian; button names below are the Russian ones.
 6. Back on **Ассистент**, run the numbered examples: a price question, «а 42 есть?» (memory), «Хочу заказать» →
    «42». A request appears; confirm it under **Заявки** and the assistant tells the customer.
 
-Pick **Кафе** in setup for the café fixture (lagman 250 сом). **Пропустить** sharing to go through the backup
-questions, including the basic-facts screen.
+Real chats are read after connecting the owner's number (see "Learning from the owner's old chats").
 
 ## Layout
 
@@ -172,7 +183,7 @@ questions, including the basic-facts screen.
 - `lib/edits.ts`, `lib/editRequest.ts` — change requests in the owner's words: AI proposes, code checks
 - `lib/db.ts`, `lib/repo.ts`, `lib/auth.ts` — Postgres (or PGlite), loading and saving businesses and chats, owner accounts
 - `app/api/business`, `app/api/chats/[id]/[action]`, `app/api/auth/*`, `app/api/whatsapp` — the server API the web app uses
-- `app/api/turn` (stateless, used by `npm run eval`), `app/api/build-sheet`, `app/api/edit-sheet`
+- `app/api/turn` (stateless, used by `npm run eval`), `app/api/edit-sheet`, `app/api/whatsapp/history`
 - `lib/kapso.ts` — the only file that talks to Kapso; `lib/whatsapp/` — checking for messages and sending replies
 - `lib/turn.ts` — one customer message through the bot, shared by the web app and WhatsApp
 - `lib/engine.ts` — off-topic count, handoff, human pause, badges (pure functions, tested in `lib/engine.test.ts`)

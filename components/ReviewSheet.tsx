@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { InfoFact } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n/react";
+import { isImported } from "@/lib/sources";
 
 
 
@@ -46,8 +47,8 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
         <div>
           <h1>{t(mode === "wizard" ? "review_title_wizard" : "review_title_edit")}</h1>
           <p className="muted">
-            {sheet.name} · {typeLabel} · {business.sheet_built_by === "ai"
-              ? t("review_sub_ai", { n: business.chats.filter((c) => !c.is_test).length })
+            {sheet.name} · {sheet.about?.trim() || typeLabel} · {business.sheet_built_by === "ai"
+              ? t("review_sub_ai", { n: business.chats.filter(isImported).length })
               : t(business.imported_history ? "review_sub_demo" : "review_sub_owner")}
           </p>
         </div>

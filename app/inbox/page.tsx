@@ -20,7 +20,8 @@ function Inbox() {
   // What the chat was waiting for when staff opened it, so the reason stays visible.
   const [seen, setSeen] = useState<{ chatId: string; flag: NeedsPerson } | null>(null);
 
-  const chats = business?.chats ?? [];
+  // Shared WhatsApp history is only read for facts; it never shows up as chats to answer.
+  const chats = (business?.chats ?? []).filter((c) => !c.imported);
   const sorted = [...chats].sort((a, b) => {
     const wa = a.needs_person ? 1 : 0, wb = b.needs_person ? 1 : 0;
     if (wa !== wb) return wb - wa;

@@ -116,9 +116,13 @@ export async function saveChat(db: Db, businessId: string, chat: Chat, opts: { w
   }
 }
 
-/** Remove imported chats (Settings → Delete imported chats). The test chat stays. */
+/** Remove imported chats (Settings → Delete imported chats). The test chat and live WhatsApp chats stay. */
 export async function deleteImportedChats(db: Db, businessId: string): Promise<void> {
-  await db.query("DELETE FROM chats WHERE business_id = $1 AND NOT COALESCE((state->>'is_test')::boolean, false)", [businessId]);
+  await db.query(
+    `DELETE FROM chats WHERE business_id = $1 AND (COALESCE((state->>'imported')::boolean, false)
+       OR NOT (COALESCE((state->>'is_test')::boolean, false) OR COALESCE((state->>'is_whatsapp')::boolean, false)))`,
+    [businessId],
+  );
   await updateBusinessData(db, businessId, { imported_history: false });
 }
 
