@@ -19,6 +19,11 @@ export const REASON: Record<NeedsPersonReason, Key> = {
 
 export const SLOT: Record<Slot, Key> = { item: "slot_item", size: "slot_size", day: "slot_day", time: "slot_time", people: "slot_people" };
 
+/** The customer's name as owners see it: the test chat is named in the owner's language. */
+export function customerName(chat: Chat, t: T): string {
+  return chat.is_test ? t("test_customer") : chat.customer;
+}
+
 function summarizeDraft(chat: Chat, t: T): string {
   const s = chat.draft?.slots ?? {};
   const parts = [s.item, s.size && t("size_n", { n: s.size }), s.people && t("people_n", { n: s.people }), s.day, s.time].filter(Boolean);
@@ -70,7 +75,18 @@ export function ChatBadges({ chat, now }: { chat: Chat; now: number }) {
   );
 }
 
-export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat; composer?: boolean; seen?: NeedsPerson | null }) {
+export function ChatThread({
+  chat,
+  composer = true,
+  seen = null,
+  onBack,
+}: {
+  chat: Chat;
+  composer?: boolean;
+  seen?: NeedsPerson | null;
+  /** Phones: back to the chat list. */
+  onBack?: () => void;
+}) {
   const { sendStaff, resume, skip30, settle } = useStore();
   const { t } = useT();
   const now = useNow();
@@ -95,7 +111,12 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
       <div className="thread-head">
         <div className="row between">
           <div>
-            <strong>{chat.customer}</strong>{" "}
+            {onBack ? (
+              <button className="ghost small back-to-list" onClick={onBack} style={{ paddingLeft: 0 }}>
+                {t("back_to_chats")}
+              </button>
+            ) : null}
+            <strong>{customerName(chat, t)}</strong>{" "}
             {chat.is_whatsapp ? <span className="badge wa-badge">WhatsApp</span> : null}{" "}
             <span className="muted small">{chat.phone !== "test" ? chat.phone : t("simulated")}</span>
           </div>
@@ -129,7 +150,7 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
           <div key={r.id} className="request">
             <div>
               <strong>{t(r.kind === "order" ? "kind_order_title" : "kind_booking_title")}:</strong> {r.summary}
-              <div className="small muted">{chat.customer} · {phone}</div>
+              <div className="small muted">{customerName(chat, t)} · {phone}</div>
             </div>
             <div className="row">
               <button className="small" onClick={() => settle(chat.id, r.id, false)}>{t("decline")}</button>
@@ -168,6 +189,7 @@ export function ChatThread({ chat, composer = true, seen = null }: { chat: Chat;
           <button className="primary" onClick={send} disabled={!draft.trim()}>{t("send")}</button>
         </div>
       ) : null}
+      {composer ? <div className="small muted composer-hint">{t("staff_pause_hint")}</div> : null}
     </>
   );
 }

@@ -75,7 +75,7 @@ describe("sending", () => {
         kind: "text",
         from: "597907523413541",
         to: "996555123456",
-        body: "Jardamchy: клиент Test customer ждёт сотрудника (Нет ответа): «Можно картой?».\nОтветить: https://jardamchy.vercel.app/inbox?chat=test",
+        body: "Jardamchy: Тестовый клиент ждёт сотрудника (Нет ответа): «Можно картой?».\nОтветить: https://jardamchy.vercel.app/inbox?chat=test",
       },
     ]);
   });
@@ -93,7 +93,7 @@ describe("sending", () => {
         to: "996555123456",
         name: "needs_person",
         lang: "ru",
-        params: ["Test customer", "Картадан төлөсө болобу? тез", "https://jardamchy.vercel.app/inbox?chat=test"],
+        params: ["Тест кардар", "Картадан төлөсө болобу? тез", "https://jardamchy.vercel.app/inbox?chat=test"],
       },
     ]);
   });

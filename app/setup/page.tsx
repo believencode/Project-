@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BackupAnswers, Business, BusinessType, Sheet, Topic } from "@/lib/types";
 import { demoBusiness, useStore } from "@/lib/store";
@@ -14,7 +14,7 @@ import { SheetSummary } from "@/components/SheetSummary";
 import { attachSources } from "@/lib/sources";
 import { applyAnswers, buildQuestions, type Answer, type Question } from "@/lib/clarify";
 
-type Step = "name" | "type" | "connect" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
+type Step = "name" | "type" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
 
 const ASK_OPTIONS: Topic[] = ["price", "hours", "booking", "availability", "address"];
 const GOALS: BackupAnswers["goal"][] = ["answer", "orders", "booking", "phone"];
@@ -37,31 +37,6 @@ interface Facts {
 }
 
 const emptyFacts = (): Facts => ({ hours: "", address: "", prices: Array.from({ length: 5 }, () => ({ item: "", amount: "" })), availability: "" });
-
-/** Fake but stable QR pattern. */
-function FakeQR() {
-  const cells = useMemo(() => {
-    const out: boolean[] = [];
-    let x = 7;
-    for (let i = 0; i < 21 * 21; i++) {
-      x = (x * 1103515245 + 12345) % 2147483648;
-      const r = Math.floor(i / 21), c = i % 21;
-      const finder = (a: number, b: number) => r >= a && r < a + 7 && c >= b && c < b + 7;
-      if (finder(0, 0) || finder(0, 14) || finder(14, 0)) {
-        const rr = r % 14 === r ? r : r - 14, cc = c >= 14 ? c - 14 : c;
-        const edge = rr === 0 || rr === 6 || cc === 0 || cc === 6;
-        const core = rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4;
-        out.push(edge || core);
-      } else out.push(x % 3 === 0);
-    }
-    return out;
-  }, []);
-  return (
-    <div className="qr" aria-label="QR">
-      {cells.map((b, i) => <i key={i} className={b ? "b" : ""} />)}
-    </div>
-  );
-}
 
 export default function SetupPage() {
   const router = useRouter();
@@ -164,7 +139,7 @@ export default function SetupPage() {
     startClarify(b);
   };
 
-  const order: Step[] = ["name", "type", "connect", "share", "asks", "goal", "facts", "language", "notes", "clarify", "summary"];
+  const order: Step[] = ["name", "type", "share", "asks", "goal", "facts", "language", "notes", "clarify", "summary"];
   const pct = Math.round(((order.indexOf(step === "reading" ? "clarify" : step === "review" ? "summary" : step) + 1) / order.length) * 100);
   const factsEmpty = !facts.hours.trim() && !facts.address.trim() && !facts.availability.trim() && facts.prices.every((p) => !p.item.trim());
 
@@ -249,19 +224,10 @@ export default function SetupPage() {
               ))}
             </div>
             {type ? <p className="muted small">{t("customers_might_ask", { example: EMPTY_STATE_EXAMPLE[type] })}</p> : null}
-            <div className="row between"><Back /><button className="primary" disabled={!type} onClick={() => go("connect")}>{t("next")}</button></div>
+            <div className="row between"><Back /><button className="primary" disabled={!type} onClick={() => go("share")}>{t("next")}</button></div>
           </>
         )}
 
-        {step === "connect" && (
-          <>
-            <h1>{t("connect_title")}</h1>
-            <p>{t("connect_body")}</p>
-            <FakeQR />
-            <p className="muted small" style={{ textAlign: "center" }}>{t("connect_note")}</p>
-            <div className="row between"><Back /><button className="primary" onClick={() => go("share")}>{t("scanned")}</button></div>
-          </>
-        )}
 
         {step === "share" && (
           <>
@@ -297,9 +263,7 @@ export default function SetupPage() {
               <div className="spinner" />
             )}
             <p className="muted">{t("reading_body")}</p>
-            {type !== "cafe" && type !== "shop" ? (
-              <p className="small muted">{t("reading_demo")}</p>
-            ) : null}
+            <p className="small muted">{t("reading_demo")}</p>
           </div>
         )}
 

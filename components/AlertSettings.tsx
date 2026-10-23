@@ -77,7 +77,6 @@ export function AlertSettings() {
         <input
           type="checkbox"
           checked={enabled}
-          style={{ width: "auto" }}
           onChange={(e) => {
             setEnabled(e.target.checked);
             if (phone.trim()) void save(e.target.checked);

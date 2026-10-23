@@ -1,27 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { InfoFact, Sheet } from "@/lib/types";
+import type { InfoFact } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import { decideWithRules } from "@/lib/rules";
-import { MISSING_ANSWER_LINE, offTopicLine } from "@/lib/copy";
 import { useT } from "@/lib/i18n/react";
 
-function sampleQuestions(sheet: Sheet): string[] {
-  const qs: string[] = [];
-  if (sheet.prices[0]) qs.push(`Какая цена на ${sheet.prices[0].item.toLowerCase()}?`);
-  qs.push(sheet.type === "cafe" ? "Есть свободный столик на вечер?" : sheet.type === "shop" ? "Какой размер есть?" : "Есть свободное время завтра?");
-  qs.push("До скольки вы работаете?");
-  qs.push("Где вы находитесь?");
-  qs.push("Напиши сочинение про лето");
-  return qs;
-}
 
-function sampleReply(q: string, sheet: Sheet): string {
-  const d = decideWithRules(q, sheet);
-  if (d.label === "off_topic") return offTopicLine(sheet.type);
-  return d.missing || !d.reply ? MISSING_ANSWER_LINE : d.reply;
-}
 
 let rowSeq = 0;
 const rowId = (p: string) => `${p}-${Date.now().toString(36)}-${++rowSeq}`;
@@ -224,19 +208,6 @@ export function ReviewSheet({ mode, onDone }: { mode: "wizard" | "edit"; onDone:
         </div>
 
         <div>
-          <div className="card">
-            <h2>{t("sample_replies")}</h2>
-            <p className="muted small">{t("sample_hint")}</p>
-            <div className="stack">
-              {sampleQuestions(sheet).map((q) => (
-                <div key={q}>
-                  <div className="bubble customer" style={{ maxWidth: "100%" }}>{q}</div>
-                  <div className="bubble bot" style={{ maxWidth: "100%", marginTop: 4, marginLeft: "1.5rem" }}>{sampleReply(q, sheet)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="card">
             <h2>{t("top_questions")}</h2>
             <div className="row">

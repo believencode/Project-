@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const { business, deleteImportedChats, setBusiness } = useStore();
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const { t } = useT();
   if (!business) return <NeedsBusiness />;
   const imported = business.chats.filter((c) => !c.is_test).length;
@@ -56,8 +57,19 @@ export default function SettingsPage() {
       </div>
 
       <div className="card stack">
-        <h2>{t("prototype")}</h2>
-        <button className="ghost" onClick={async () => { await setBusiness(null); router.push("/"); }}>{t("reset_proto")}</button>
+        <h2>{t("start_over_title")}</h2>
+        <p className="muted">{t("start_over_hint")}</p>
+        {confirmReset ? (
+          <div className="notice warn">
+            <p>{t("start_over_q", { name: business.sheet.name })}</p>
+            <div className="row">
+              <button className="ghost" onClick={() => setConfirmReset(false)}>{t("cancel")}</button>
+              <button className="danger" onClick={async () => { await setBusiness(null); router.push("/"); }}>{t("start_over_yes")}</button>
+            </div>
+          </div>
+        ) : (
+          <button className="danger" onClick={() => setConfirmReset(true)}>{t("start_over")}</button>
+        )}
       </div>
     </main>
   );

@@ -55,7 +55,7 @@ const oneLine = (s: string, max = 160) => {
 
 export function alertParts(lang: Lang, chat: Chat, flag: NeedsPerson) {
   const t = (key: Key, vars?: Record<string, string>) => translate(lang, key, vars);
-  const customer = oneLine(chat.customer, 60);
+  const customer = oneLine(chat.is_test ? t("test_customer") : chat.customer, 60);
   const detail = oneLine(flag.details.at(-1) || t(REASON[flag.reason]));
   const base = publicUrl();
   const link = base ? `${base}/inbox?chat=${encodeURIComponent(chat.id)}` : "";
