@@ -27,8 +27,12 @@ export interface KapsoMessage {
 export interface KapsoPhoneNumber {
   phone_number_id: string;
   display_name: string | null;
+  /** "+996 555 123 456" as Meta shows it. */
+  display_phone_number?: string | null;
   kind: string;
   is_coexistence: boolean;
+  /** The Kapso customer (one per business) the number was connected for. */
+  customer_id?: string | null;
 }
 
 export class KapsoError extends Error {
@@ -73,9 +77,56 @@ async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
   return JSON.parse(body) as T;
 }
 
-export async function listPhoneNumbers(): Promise<KapsoPhoneNumber[]> {
-  const { data } = await call<{ data: KapsoPhoneNumber[] }>(`${PLATFORM_API}/whatsapp/phone_numbers`);
+export async function listPhoneNumbers(filter: { customer_id?: string; phone_number_id?: string } = {}): Promise<KapsoPhoneNumber[]> {
+  const q = new URLSearchParams(Object.entries(filter).filter(([, v]) => v) as [string, string][]);
+  const { data } = await call<{ data: KapsoPhoneNumber[] }>(`${PLATFORM_API}/whatsapp/phone_numbers${q.size ? `?${q}` : ""}`);
   return data;
+}
+
+/** The Kapso customer for one of our businesses, created on first use. */
+export async function ensureCustomer(externalId: string, name: string): Promise<string> {
+  const q = new URLSearchParams({ external_customer_id: externalId });
+  const { data } = await call<{ data: { id: string }[] }>(`${PLATFORM_API}/customers?${q}`);
+  if (data[0]) return data[0].id;
+  const created = await call<{ data: { id: string } }>(`${PLATFORM_API}/customers`, {
+    method: "POST",
+    body: JSON.stringify({ customer: { name, external_customer_id: externalId } }),
+  });
+  return created.data.id;
+}
+
+export interface SetupLinkOptions {
+  successUrl: string;
+  failureUrl: string;
+  billing: "customer_managed" | "partner_managed";
+}
+
+/**
+ * A link where the owner connects their WhatsApp Business app number (coexistence only,
+ * so the choice is made for them). Valid for 30 days, usable once.
+ */
+export async function createSetupLink(customerId: string, o: SetupLinkOptions): Promise<{ id: string; url: string }> {
+  const { data } = await call<{ data: { id: string; url: string } }>(`${PLATFORM_API}/customers/${customerId}/setup_links`, {
+    method: "POST",
+    body: JSON.stringify({
+      setup_link: {
+        success_redirect_url: o.successUrl,
+        failure_redirect_url: o.failureUrl,
+        allowed_connection_types: ["coexistence"],
+        meta_billing_mode: o.billing,
+        // Jardamchy's colours, so the page feels like part of the app.
+        theme_config: {
+          primary_color: "#127a52",
+          background_color: "#f4f5f2",
+          text_color: "#1b1f1d",
+          muted_text_color: "#66706b",
+          card_color: "#ffffff",
+          border_color: "#e2e5e0",
+        },
+      },
+    }),
+  });
+  return { id: data.id, url: data.url };
 }
 
 /** Messages created on or after `since`, oldest first (follows pagination). */

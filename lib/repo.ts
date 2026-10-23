@@ -19,6 +19,8 @@ export interface BusinessRow {
   /** Online: the Kapso webhook that pushes this number's messages, and its signing secret. */
   kapso_webhook_id: string | null;
   kapso_webhook_secret: string | null;
+  /** The Kapso customer for this business: its own numbers are connected through it. */
+  kapso_customer_id?: string | null;
 }
 
 function splitBusiness(b: Business): BusinessData {
@@ -155,6 +157,10 @@ export async function setWebhook(db: Db, businessId: string, webhook: { id: stri
     webhook?.id ?? null,
     webhook?.secret ?? null,
   ]);
+}
+
+export async function setKapsoCustomer(db: Db, businessId: string, customerId: string): Promise<void> {
+  await db.query("UPDATE businesses SET kapso_customer_id = $2 WHERE id = $1", [businessId, customerId]);
 }
 
 export async function businessForNumber(db: Db, phoneNumberId: string): Promise<BusinessRow | null> {
