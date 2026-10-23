@@ -11,6 +11,7 @@ const HELP: [Key, Key][] = [
   ["help_other_t", "help_other_d"],
   ["help_activity_t", "help_activity_d"],
   ["help_account_t", "help_account_d"],
+  ["help_delete_t", "help_delete_d"],
 ];
 
 function Failed() {

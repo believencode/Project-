@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BackupAnswers, Business, BusinessType, Sheet, Topic } from "@/lib/types";
-import { demoBusiness, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { testChat } from "@/lib/fixtures";
 import { ALLOWED_TOPICS, AVAILABILITY_EXAMPLE, BUSINESS_TYPES, EMPTY_STATE_EXAMPLE } from "@/lib/copy";
 import { useT } from "@/lib/i18n/react";
@@ -11,10 +11,9 @@ import type { Key } from "@/lib/i18n";
 import { ReviewSheet } from "@/components/ReviewSheet";
 import { Clarify } from "@/components/Clarify";
 import { SheetSummary } from "@/components/SheetSummary";
-import { attachSources } from "@/lib/sources";
 import { applyAnswers, buildQuestions, type Answer, type Question } from "@/lib/clarify";
 
-type Step = "name" | "type" | "share" | "reading" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
+type Step = "name" | "type" | "share" | "asks" | "goal" | "facts" | "language" | "notes" | "clarify" | "summary" | "review";
 
 const ASK_OPTIONS: Topic[] = ["price", "hours", "booking", "availability", "address"];
 const GOALS: BackupAnswers["goal"][] = ["answer", "orders", "booking", "phone"];
@@ -41,7 +40,7 @@ const emptyFacts = (): Facts => ({ hours: "", address: "", prices: Array.from({ 
 export default function SetupPage() {
   const router = useRouter();
   const { business, setBusiness, goLive, updateSheet } = useStore();
-  const { t, tError } = useT();
+  const { t } = useT();
   const tr = (key: Key) => t(key);
   const [history, setHistory] = useState<Step[]>(["name"]);
   const step = history[history.length - 1];
@@ -55,45 +54,6 @@ export default function SetupPage() {
 
   const go = (s: Step) => setHistory((h) => [...h, s]);
   const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
-
-  // "Reading chats": the AI reads the imported chats and drafts the sheet, then the review screen.
-  const [readError, setReadError] = useState<string | null>(null);
-  const [readTry, setReadTry] = useState(0);
-  useEffect(() => {
-    if (step !== "reading") return;
-    let cancelled = false;
-    setReadError(null);
-    const kind = type === "cafe" ? "cafe" : "shop";
-    const demo = demoBusiness(kind, name.trim() || undefined);
-    (async () => {
-      let business: Business = { ...demo, sheet_built_by: "demo" };
-      try {
-        const res = await fetch("/api/build-sheet", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chats: demo.chats, type: demo.sheet.type, name: demo.sheet.name }),
-        });
-        const body = (await res.json()) as { sheet?: Sheet | null; error?: string };
-        if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
-        if (body.sheet) business = { ...demo, sheet: body.sheet, sheet_built_by: "ai" };
-      } catch (err) {
-        if (!(err instanceof TypeError)) {
-          // The AI is configured but failed: say so instead of showing demo facts as if the AI read them.
-          if (!cancelled) setReadError(err instanceof Error ? tError(err.message) : t("read_failed"));
-          return;
-        }
-        // No server at all (static demo): keep the demo facts.
-      }
-      if (cancelled) return;
-      // Link every fact to the chat message it came from, and spot prices that changed over time.
-      startClarify({ ...business, sheet: attachSources(business.sheet, business.chats) }, true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // startClarify only changes state; re-running on its identity would re-read the chats.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, type, name, readTry]);
 
   // Questions for whatever isn't clear, one per screen, then the summary.
   const [clarifyBase, setClarifyBase] = useState<Sheet | null>(null);
@@ -140,10 +100,10 @@ export default function SetupPage() {
   };
 
   const order: Step[] = ["name", "type", "share", "asks", "goal", "facts", "language", "notes", "clarify", "summary"];
-  const pct = Math.round(((order.indexOf(step === "reading" ? "clarify" : step === "review" ? "summary" : step) + 1) / order.length) * 100);
+  const pct = Math.round(((order.indexOf(step === "review" ? "summary" : step) + 1) / order.length) * 100);
   const factsEmpty = !facts.hours.trim() && !facts.address.trim() && !facts.availability.trim() && facts.prices.every((p) => !p.item.trim());
 
-  const Back = () => (history.length > 1 && step !== "reading" ? <button className="ghost" onClick={back}>{t("back")}</button> : <span />);
+  const Back = () => (history.length > 1 ? <button className="ghost" onClick={back}>{t("back")}</button> : <span />);
 
   if (step === "clarify" && clarifyBase) {
     return (
@@ -240,31 +200,9 @@ export default function SetupPage() {
             </div>
             <div className="row between">
               <Back />
-              <div className="row">
-                <button onClick={() => go("asks")}>{t("skip")}</button>
-                <button className="primary" onClick={() => go("reading")}>{t("share_btn")}</button>
-              </div>
+              <button className="primary" onClick={() => go("asks")}>{t("next")}</button>
             </div>
           </>
-        )}
-
-        {step === "reading" && (
-          <div style={{ textAlign: "center" }}>
-            <h1>{t("reading_title")}</h1>
-            {readError ? (
-              <>
-                <div className="notice warn">{readError}</div>
-                <div className="row" style={{ justifyContent: "center" }}>
-                  <button onClick={() => setHistory((h) => [...h.slice(0, -1), "asks"])}>{t("reading_skip")}</button>
-                  <button className="primary" onClick={() => setReadTry((n) => n + 1)}>{t("try_again")}</button>
-                </div>
-              </>
-            ) : (
-              <div className="spinner" />
-            )}
-            <p className="muted">{t("reading_body")}</p>
-            <p className="small muted">{t("reading_demo")}</p>
-          </div>
         )}
 
         {step === "asks" && (

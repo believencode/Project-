@@ -197,6 +197,8 @@ export interface Chat {
   is_test?: boolean;
   /** A real WhatsApp chat (customer messages come from WhatsApp, replies go out on WhatsApp). */
   is_whatsapp?: boolean;
+  /** An old chat the owner shared when connecting WhatsApp: read for facts, never answered. */
+  imported?: boolean;
   /** Facts proposed from staff answers in this chat, waiting for the owner. */
   fact_suggestions?: FactSuggestion[];
 }

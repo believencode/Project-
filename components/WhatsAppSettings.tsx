@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n/react";
+import { HistoryImport } from "./HistoryImport";
 
 interface NumberInfo {
   id: string;
@@ -71,6 +72,7 @@ export function WhatsAppSettings() {
   const tests = info.numbers.filter((n) => n.sandbox);
 
   return (
+    <>
     <div className="card stack">
       <h2>WhatsApp</h2>
       {info.error ? <div className="notice warn small" style={{ margin: 0 }}>{tError(info.error)}</div> : null}
@@ -123,5 +125,8 @@ export function WhatsAppSettings() {
       ) : null}
       {error ? <div className="notice warn small" style={{ margin: 0 }}>{error}</div> : null}
     </div>
+    {/* Only the owner's own number has shared chats; the test number has none. */}
+    {current && !current.sandbox ? <HistoryImport /> : null}
+    </>
   );
 }

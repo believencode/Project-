@@ -17,7 +17,10 @@ export interface KapsoMessage {
   text?: { body: string };
   kapso?: {
     direction?: "inbound" | "outbound";
-    /** "business_app" when staff replied from the WhatsApp Business app on the phone. */
+    /**
+     * "business_app" when staff replied from the WhatsApp Business app on the phone,
+     * "history_sync" for chats the owner shared when connecting the number.
+     */
     origin?: string;
     contact_name?: string;
     phone_number?: string;
@@ -132,11 +135,11 @@ export async function createSetupLink(customerId: string, o: SetupLinkOptions): 
 /** Messages created on or after `since`, oldest first (follows pagination). */
 export async function listMessages(
   phoneNumberId: string,
-  opts: { since: Date; direction?: "inbound" | "outbound" },
+  opts: { since: Date; direction?: "inbound" | "outbound"; maxPages?: number },
 ): Promise<KapsoMessage[]> {
   const out: KapsoMessage[] = [];
   let after: string | null = null;
-  for (let page = 0; page < 10; page++) {
+  for (let page = 0; page < (opts.maxPages ?? 10); page++) {
     const q = new URLSearchParams({ since: opts.since.toISOString(), limit: "100", fields: "kapso(default,origin)" });
     if (opts.direction) q.set("direction", opts.direction);
     if (after) q.set("after", after);

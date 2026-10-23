@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 import { Source } from "./Source";
 import { FactSuggestions } from "./FactSuggestions";
 import { useT } from "@/lib/i18n/react";
+import { isImported } from "@/lib/sources";
 import type { Key, Vars } from "@/lib/i18n";
 import type { Sheet } from "@/lib/types";
 
@@ -42,7 +43,7 @@ export function SheetSummary({ mode, onApprove, onEditDetails }: { mode: "wizard
   const [applied, setApplied] = useState<string[] | null>(null);
   if (!business) return null;
   const sheet = business.sheet;
-  const chatsRead = business.chats.filter((c) => !c.is_test).length;
+  const chatsRead = business.chats.filter(isImported).length;
 
   const notSet = [
     !sheet.hours && t("ns_hours"),
