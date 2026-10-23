@@ -1,4 +1,6 @@
-# Kapso Desk prototype
+# Jardamchy prototype
+
+*Jardamchy* (жардамчы) is Kyrgyz for "helper": an AI assistant that answers a small business's WhatsApp customers.
 
 Clickable prototype of a WhatsApp Business bot for small businesses in Bishkek, built from
 [`whatsapp-bot-prototype-spec.md`](whatsapp-bot-prototype-spec.md). WhatsApp connection, chat sync and sending are mocked.

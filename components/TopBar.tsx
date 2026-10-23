@@ -29,7 +29,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <Link href="/" className="brand">
-        Kapso <span>Desk</span>
+        Jardam<span>chy</span>
       </Link>
       <nav className="nav">
         {links.map(([href, label]) => (
